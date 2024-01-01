@@ -468,21 +468,6 @@ class BinParser(extensions: Extension.set, limits: Limits, filename: string) ext
 				var sig_index = parser.readSigIndex();
 				decl = TagDecl.new(sig_index);
 			}
-			BpImportExportKind.AbsType.code => if (extensions.TYPE_IMPORTS) {
-				var flags = parser.readByte("flags", BpConstants.renderAbsTypeFlags);
-				var has_default = (flags & BpAbsTypeFlag.HasDefault.mask) != 0;
-				var is_externref = (flags & BpAbsTypeFlag.IsExternRef.mask) != 0;
-				var count = parser.readU32_i("constraint count", limits.max_num_type_constraints);
-				var vec = Vector<ValueType>.new();
-				if (count < limits.max_grow_size) vec.grow(count);
-				for (i < count) {
-					var b = parser.readByte("constraint type", BpConstants.renderNone);
-					if (b != 0) err.rel(decoder, pt).InvalidTypeConstraint(b);
-					var t = parser.readValueType();
-					vec.put(t);
-				}
-				decl = AbsTypeDecl.new(has_default, is_externref, vec.extract());
-			}
 			BpImportExportKind.Command.code => if (extensions.TYPE_IMPORTS) {
 				decl = ImportCommandDecl.new();
 			}
@@ -549,7 +534,6 @@ class BinParser(extensions: Extension.set, limits: Limits, filename: string) ext
 			BpImportExportKind.Memory.code => decl = parser.readMemoryRef();
 			BpImportExportKind.Global.code => decl = parser.readGlobalRef();
 			BpImportExportKind.Tag.code => decl = parser.readTagRef();
-			BpImportExportKind.AbsType.code => decl = parser.readAbsTypeRef();
 			_ => err.rel(decoder, pt).InvalidExportKind(kind);
 		}
 		return decl;
@@ -915,7 +899,6 @@ type ValueTypeCode(code: i8, index: i32) #unboxed {
 			BpTypeCode.ARRAYREF.val => return ValueTypes.ARRAYREF;
 			BpTypeCode.EXNREF.val => return ValueTypes.EXNREF;
 			BpTypeCode.NULLREF.val => return ValueTypes.NULLREF;
-			BpTypeCode.ABS.val => return ValueType.Abstract(module.abstypes[index]);
 			_ => return fail();
 		}
 	}
@@ -966,7 +949,6 @@ type ValueTypeCode(code: i8, index: i32) #unboxed {
 			BpTypeCode.ARRAYREF.val,
 			BpTypeCode.EXNREF.val,
 			BpTypeCode.NULLREF.val => return ValueKind.REF;
-			BpTypeCode.ABS.val => return ValueKind.ABS;
 			_ => return fail();
 		}
 	}
@@ -986,7 +968,6 @@ type ValueTypeCode(code: i8, index: i32) #unboxed {
 		}
 	}
 	def toConcreteValueKind(instance: Instance) -> ValueKind {
-		if (code == BpTypeCode.ABS.val) return instance.abskinds[index];
 		return toAbstractValueKind();
 	}
 	def fail<T>() -> T {
@@ -1049,9 +1030,6 @@ type BlockTypeCode(code: int, index: int) #unboxed {
 			}
 			BpTypeCode.NULLREF.val => {
 				return (SigCache.arr_v, [ValueTypes.NULLREF]);
-			}
-			BpTypeCode.ABS.val => {
-				return (SigCache.arr_v, [ValueType.Abstract(module.abstypes[index])]);
 			}
 		}
 		var sig = SigDecl.!(module.heaptypes[code]);
