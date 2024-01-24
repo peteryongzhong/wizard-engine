@@ -44,6 +44,9 @@ component SigCache {
 	def arr_ds: Array<ValueType> = [ValueType.F64, ValueType.V128];
 	def arr_h: Array<ValueType> = [ValueTypes.I31REF];
 	def arr_x: Array<ValueType> = [ValueTypes.EXNREF];
+	def arr_ei: Array<ValueType> = [ValueTypes.EXTERNREF, ValueType.I32];
+	def arr_eii: Array<ValueType> = [ValueTypes.EXTERNREF, ValueType.I32, ValueType.I32];
+	def arr_ie: Array<ValueType> = [ValueType.I32, ValueTypes.EXTERNREF];
 
 	// Very commonly used signatures.
 	def v_v = S(arr_v, arr_v);
@@ -102,6 +105,14 @@ component SigCache {
 	def g_v = S(arr_g, arr_v);
 	def e_i = S(arr_e, arr_i);
 	def g_i = S(arr_g, arr_i);
+	def e_e = S(arr_e, arr_e);
+	def ei_i = S(arr_ei, arr_i);
+	def ei_e = S(arr_ei, arr_e);
+	def ei_v = S(arr_ei, arr_v);
+	def eii_v = S(arr_eii, arr_v);
+	def ie_e = S(arr_ie, arr_e);
+	def ie_v = S(arr_ie, arr_v);
+
 
 	def r_i = S(arr_r, arr_i);
 	def r_r = S(arr_r, arr_r);

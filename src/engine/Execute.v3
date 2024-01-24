@@ -75,6 +75,22 @@ component Execute {
 			}
 		}
 	}
+	// Casts a Wasm value to the host object type {T}, if the value represents
+	// an externref.
+	def doHostCast<T>(nullable: bool, val: Value) -> MaybeTrap<T> {
+		var d: T;
+		match (val) {
+			Ref(obj) => {
+				if (obj == null) {
+					if (nullable) return MaybeTrap(d, TrapReason.NONE);
+					return MaybeTrap(d, TrapReason.NULL_DEREF);
+				}
+				if (T.?(obj)) return MaybeTrap(T.!(obj), TrapReason.NONE);
+			}
+			_ => ;
+		}
+		return MaybeTrap(d, TrapReason.FAILED_CAST);
+	}
 	private def isFalse(obj: Object) -> bool {
 		return false;
 	}

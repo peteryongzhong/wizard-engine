@@ -1,0 +1,71 @@
+// Copyright 2024 Wizard Authors. All rights reserved.
+// See LICENSE for details of Apache 2.0 license.
+
+// A host module that provides dynamic instrumentation APIs so that monitors can
+// be implemented as Wasm modules.
+
+// ModuleMirror, InstanceMirror, FuncMirror, FrameMirror, ProbeMirror
+
+def FRAME = HostObjectAdapter<FrameMirror>.new(false);
+def X = HostModuleBuilder.new("wizeng:FrameMirror")
+	.func("get_func", SigCache.e_e,		FRAME.e_e(FrameMirror.get_func))
+	.func("get_pc", SigCache.e_i,		FRAME.e_i(FrameMirror.get_pc))
+	.func("get_stp", SigCache.e_i,		FRAME.e_i(FrameMirror.get_stp))
+	.func("get_depth", SigCache.e_i,	FRAME.e_i(FrameMirror.get_depth))
+	.func("get_caller", SigCache.e_e,	FRAME.e_e(FrameMirror.get_caller))
+	.func("num_locals", SigCache.e_i,	FRAME.e_i(FrameMirror.num_locals))
+	.func("get_local<T>", SigCache.ei_i,	FRAME.ei_i(FrameMirror.get_local_i32))
+	.func("get_operand<T>", SigCache.ei_i,	FRAME.ei_i(FrameMirror.get_operand_i32))
+	.func("set_pc", SigCache.ei_v,		FRAME.ei_v(FrameMirror.set_pc))
+	.func("set_vsp", SigCache.ei_v,		FRAME.ei_v(FrameMirror.set_vsp))
+	.func("push<T>", SigCache.ei_v,		FRAME.ei_v(FrameMirror.push_i32))
+	.func("pop<T>", SigCache.e_i,		FRAME.e_i(FrameMirror.pop_i32))
+	.func("set_local<T>", SigCache.eii_v,	FRAME.eii_v(FrameMirror.set_local_i32))
+	.func("set_operand<T>", SigCache.eii_v,	FRAME.eii_v(FrameMirror.set_operand_i32))
+	.register(false);
+
+def MODULE = HostObjectAdapter<ModuleMirror>.new(false);
+def Y = HostModuleBuilder.new("wizeng:ModuleMirror")
+	.func("get_func", SigCache.ei_e,		MODULE.ei_e(ModuleMirror.get_func))
+	.func("insert_global_probe", SigCache.e_e,	MODULE.e_i(ModuleMirror.insert_global_probe))
+	.func("remove_global_probe", SigCache.e_v,	MODULE.e_i(ModuleMirror.remove_global_probe))
+	.register(false);
+
+def FUNC = HostObjectAdapter<FuncMirror>.new(false);
+def Z = HostModuleBuilder.new("wizeng:FuncMirror")
+	.func("insert_local_probe", SigCache.ie_e,	FUNC.e_i(FuncMirror.insert_local_probe))
+	.func("remove_local_probe", SigCache.ie_v,	FUNC.e_i(FuncMirror.remove_local_probe))
+	.register(false);
+
+
+class FrameMirror(accessor: FrameAccessor) extends HostObject {
+	def get_func() -> HostObject;
+	def get_pc() -> int;
+	def get_stp() -> int;
+	def get_depth() -> int;
+	def get_caller() -> HostObject;
+	def num_locals() -> int;
+	def set_pc(npc: int);
+	def set_vsp(nvsp: int);
+	
+	def get_local_i32(index: int) -> int;
+	def get_operand_i32(index: int) -> int;
+	def set_local_i32(index: int, val: int);
+	def set_operand_i32(index: int, val: int);
+	def pop_i32() -> int;
+	def push_i32(val: int);
+}
+
+class ModuleMirror(module: Module) extends HostObject {
+	def get_func(index: int) -> FuncMirror;
+	def insert_global_probe(f: Function) -> ProbeMirror;
+	def remove_global_probe(p: ProbeMirror);
+}
+
+class ProbeMirror extends HostObject {
+}
+
+class FuncMirror extends HostObject {
+	def insert_local_probe(pc: int, f: Function) -> ProbeMirror;
+	def remove_local_probe(pc: int, p: ProbeMirror);
+}

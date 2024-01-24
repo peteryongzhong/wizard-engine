@@ -1,7 +1,8 @@
 // Copyright 2023 Wizard Authors. All rights reserved.
 // See LICENSE for details of Apache 2.0 license.
 
-// Utility methods that adapt host (V3) functions to be called from Wasm.
+// Utility methods that adapt host (V3) functions to be called from Wasm by
+// boxing and unboxing Virgil (e.g. {int}) values to Wasm values (e.g. {Value.I32}.
 component HostAdapters {
 	def ii_i = adapt(wrap_ii_i, _);
 	def uu_u = adapt(wrap_uu_u, _);
@@ -14,6 +15,11 @@ component HostAdapters {
 	}
 
 }
+
+def unbox_i = Values.v_i;
+def unbox_u = Values.v_u;
+def box_i = Values.i_v;
+def box_u = Values.u_v;
 
 def adapt<P, R>(wrap: (P -> R, Range<Value>) -> HostResult, func: P -> R) -> (Range<Value> -> HostResult) {
 	return wrap(func, _);
@@ -32,4 +38,65 @@ def wrap_ii_i(func: (int, int) -> int, args: Range<Value>) -> HostResult {
 }
 def wrap_uu_u(func: (u32, u32) -> u32, args: Range<Value>) -> HostResult {
 	return HostResult.Value1(Values.u_v(func(Values.v_u(args[0]), Values.v_u(args[1]))));
+}
+
+// XXX: factor out commonality with host object signatures.
+// Helpers for adapting functions that accept a specific HostObject type as the first argument.
+def wrap_e_i<H>(func: H -> int, nullable: bool, args: Range<Value>) -> HostResult {
+	var val = Execute.doHostCast<H>(nullable, args[0]);
+	return call0(func, Execute.doHostCast<H>(nullable, args[0]), box_i);
+}
+
+def wrap_e_e<H>(func: H -> HostObject, nullable: bool, args: Range<Value>) -> HostResult {
+	var val = Execute.doHostCast<H>(nullable, args[0]);
+	return call0(func, Execute.doHostCast<H>(nullable, args[0]), Value.Ref);
+}
+
+def wrap_ei_i<H>(func: (H, int) -> int, nullable: bool, args: Range<Value>) -> HostResult {
+	var val = Execute.doHostCast<H>(nullable, args[0]);
+	return call1(func, Execute.doHostCast<H>(nullable, args[0]), unbox_i(args[1]), box_i);
+}
+
+def wrap_ei_e<H>(func: (H, int) -> HostObject, nullable: bool, args: Range<Value>) -> HostResult {
+	var val = Execute.doHostCast<H>(nullable, args[0]);
+	return call1(func, Execute.doHostCast<H>(nullable, args[0]), unbox_i(args[1]), Value.Ref);
+}
+
+def wrap_ei_v<H>(func: (H, int) -> void, nullable: bool, args: Range<Value>) -> HostResult {
+	var val = Execute.doHostCast<H>(nullable, args[0]);
+	return call1(func, Execute.doHostCast<H>(nullable, args[0]), unbox_i(args[1]), null);
+}
+
+def wrap_eii_v<H>(func: (H, int, int) -> void, nullable: bool, args: Range<Value>) -> HostResult {
+	var val = Execute.doHostCast<H>(nullable, args[0]);
+	return call2(func, Execute.doHostCast<H>(nullable, args[0]), unbox_i(args[1]), unbox_i(args[2]), null);
+}
+
+def call0<H, R>(func: H -> R, receiver: MaybeTrap<H>, box: R -> Value) -> HostResult {
+	var ret = func(receiver.result);
+	if (receiver.ok()) return if(box == null, HostResult.Value0, HostResult.Value1(box(ret)));
+	else return receiver.toHostResultThrow();
+}
+
+def call1<H, P, R>(func: (H, P) -> R, receiver: MaybeTrap<H>, arg: P, box: R -> Value) -> HostResult {
+	var ret = func(receiver.result, arg);
+	if (receiver.ok()) return if(box == null, HostResult.Value0, HostResult.Value1(box(ret)));
+	else return receiver.toHostResultThrow();
+}
+
+def call2<H, P, Q, R>(func: (H, P, Q) -> R, receiver: MaybeTrap<H>, arg0: P, arg1: Q, box: R -> Value) -> HostResult {
+	var ret = func(receiver.result, arg0, arg1);
+	if (receiver.ok()) return if(box == null, HostResult.Value0, HostResult.Value1(box(ret)));
+	else return receiver.toHostResultThrow();
+}
+
+
+// A helper for adapting functions that accept type {T <: HostObject}.
+class HostObjectAdapter<T>(nullable: bool) {
+	def e_e (func: T -> HostObject) ->		Range<Value> -> HostResult { return wrap_e_e(func, nullable, _); }
+	def e_i (func: T -> int) ->			Range<Value> -> HostResult { return wrap_e_i(func, nullable, _); }
+	def ei_i(func: (T, int) -> int) ->		Range<Value> -> HostResult { return wrap_ei_i(func, nullable, _); }
+	def ei_e(func: (T, int) -> HostObject) ->	Range<Value> -> HostResult { return wrap_ei_e(func, nullable, _); }
+	def ei_v(func: (T, int) -> void) ->		Range<Value> -> HostResult { return wrap_ei_v(func, nullable, _); }
+	def eii_v(func: (T, int, int) -> void) ->	Range<Value> -> HostResult { return wrap_eii_v(func, nullable, _); }
 }
