@@ -5,37 +5,12 @@
 def E = MonitorRegistry.register(
 	"profile", "Reports execution time for entire calling context trees.",
 	ProfileMonitor.new());
-def depth_ = E // TODO: return Option<int>
-	.addOption("depth=<n>", "limit the maximum call tree depth");
-def filter_ = E // TODO: return Option<DeclFilter>
-	.addOption("calls=<filter>", "apply profiling to selected functions");
-
-// TODO: def depth = E.addIntOption("depth", -1);
-// TODO: def filter = E.addFuncFilter("calls");
+def depth = E.newIntOption("depth", "limit the maximum call tree depth", -1);
+def filter = E.newFilterOption("calls", "apply profiling to selected functions");
 
 class ProfileMonitor extends Monitor {
 	var tree: ProfileTree;
-	var maxDepth: int = -1;
-	var filter: DeclFilter;
 
-	// format: --monitors=profile{depth=2,calls=*}
-	def configure(args: string) -> string {
-		def argMap = MonitorUtil.argMapFrom(args);
-		var argFound = false;
-
-		if (argMap.has("depth") || argMap.has("d")) {
-			var depthArg = if (argMap.has("depth"), argMap["depth"], argMap["d"]);
-			maxDepth = Ints.parseDecimal(depthArg, 0).1;
-			return null;
-		}
-		if (argMap.has("calls")) {
-			filter = DeclFilter.new(argMap["calls"]);
-			return null;
-		}
-		def buf = StringBuilder.new();
-		buf.put1("invalid argument(s) \"%s\"", args);
-		return buf.toString();
-	}
 	def onParse(module: Module) {
 		var mm = ModuleMonitor.new(module);
 		tree = ProfileTree.new();
@@ -46,11 +21,11 @@ class ProfileMonitor extends Monitor {
 		onFinish(null);
 	}
 	def onFinish(i: Instance) {
-		tree.rootNode.render(0, 0, maxDepth);
+		tree.rootNode.render(0, 0, depth.val);
 	}
 
 	private def isFuncMonitored(module: Module, func: FuncDecl) -> bool {
-		return !MonitorUtil.isImport(module, func) && (filter == null || filter.matches(module, func));
+		return !MonitorUtil.isImport(module, func) && (filter == null || filter.val.matches(module, func));
 	}
 }
 
@@ -78,7 +53,7 @@ private class ProfileTreeNode(parent: ProfileTreeNode, func: WasmFunction) {
 		totalTime += System.ticksUs() - curTime;
 	}
 
-	def render(depth: int, total: int, maxDepth: int) {
+	def render(depth: int, total: int, max: int) {
 		var totalPercentTime = if(depth == 1, totalTime, total);
 		var nestedTime: int = totalTime;
 		var selfTime: int = totalTime;
@@ -86,7 +61,7 @@ private class ProfileTreeNode(parent: ProfileTreeNode, func: WasmFunction) {
 		var childArray = Lists.toArray(children);
 		childArray = Arrays.sort(childArray, 0, childArray.length, byTime);
 
-		if (maxDepth == -1 || depth < maxDepth) {
+		if (max == -1 || depth < max) {
 			var childTotalTime = 0;
 			for (i < childArray.length) {
 				childTotalTime += childArray[i].totalTime;
@@ -125,9 +100,9 @@ private class ProfileTreeNode(parent: ProfileTreeNode, func: WasmFunction) {
 			OUT.outln();
 		}
 
-		if (maxDepth == -1 || depth < maxDepth) {
+		if (max == -1 || depth < max) {
 			for (child in childArray) {
-				if (child != null) child.render(depth + 1, totalPercentTime, maxDepth);
+				if (child != null) child.render(depth + 1, totalPercentTime, max);
 			}
 		}
 	}

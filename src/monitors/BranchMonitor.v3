@@ -4,35 +4,16 @@
 def E = MonitorRegistry.register(
 	"branches", "Tallies direct and indirect branches.",
 	BranchMonitor.new());
-def inCodeMode_ = E // TODO: return Option<int>
-	.addOption("code|c", "emit report with code");
-def showZeroCounts_ = E // TODO: return Option<bool>
-	.addOption("zero|z", "show zero counts");
+def inCodeMode = E.newBoolOption("code", "emit report with code");
+def showZeroCounts = E.newBoolOption("zero", "show zero counts");
 
-var inCodeMode = false;
-var showZeroCounts = false;
 class BranchMonitor extends Monitor {
 	var visitor: BranchMonitorState;
 	def bi = BytecodeIterator.new();
 
-	def configure(args: string) -> string {
-		def argMap = MonitorUtil.argMapFrom(args);
-		if (argMap.has("code") || argMap.has("c")) {
-			inCodeMode = true;
-			return null;
-		}
-		if (argMap.has("zero") || argMap.has("z")) {
-			showZeroCounts = true;
-			return null;
-		}
-		def buf = StringBuilder.new();
-		buf.put1("invalid argument(s) \"%s\"", args);
-		return buf.toString();
-	}
-
 	def onParse(module: Module) {
 		var mm = ModuleMonitor.new(module);
-		visitor = BranchMonitorState.new(mm, inCodeMode);
+		visitor = BranchMonitorState.new(mm);
 		visitor.bi = bi;
 
 		mm.forEachFunc(MonitorUtil.isNotImport, monitorFunc(_, visitor));
@@ -61,7 +42,7 @@ private class BmBrTableProbe(taken: Array<u64>) extends OperandProbe_i_v {
 	}
 }
 
-private class BranchMonitorState(mm: ModuleMonitor, inCodeMode: bool) extends BytecodeVisitor {
+private class BranchMonitorState(mm: ModuleMonitor) extends BytecodeVisitor {
 	def entries = Vector<BmEntry>.new();
 	var bi: BytecodeIterator;
 	def tracer = InstrTracer.new();
@@ -79,7 +60,7 @@ private class BranchMonitorState(mm: ModuleMonitor, inCodeMode: bool) extends By
 	}
 
 	def onFinish(i: Instance) {
-		if (inCodeMode) reportCode(i.module, entries, bi, tracer);
+		if (inCodeMode.val) reportCode(i.module, entries, bi, tracer);
 		else report(i.module, entries);
 	}
 
@@ -103,7 +84,7 @@ def report(module: Module, entries: Vector<BmEntry>) {
 	var prev: FuncDecl;
 	for (j < entries.length) {
 		var e = entries[j];
-		if (!showZeroCounts) {
+		if (!showZeroCounts.val) {
 			var nonzero = false;
 			for (v in e.taken) nonzero |= (v != 0);
 			if (!nonzero) continue;

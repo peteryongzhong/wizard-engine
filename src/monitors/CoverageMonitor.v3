@@ -5,32 +5,13 @@
 def E = MonitorRegistry.register(
 	"coverage", "Tallies instruction and basic block coverage.",
 	CoverageMonitor.new());
-def inCodeMode_ = E // TODO: return Option<int>
-	.addOption("code[=i]|c[=i]", "emit report with [per-instruction] code");
+def inCodeMode = E.newBoolOption("blocks", "emit report per-basic-block");
+def inInstrMode = E.newBoolOption("instrs", "emit report per-instruction");
 
 class CoverageMonitor extends Monitor {
 	def entries = Vector<CoverageMonitorProbe>.new();
 	def isStartOfBlock = Vector<bool>.new();
 	def executed = Vector<bool>.new();
-	var inBasicBlockMode = false;
-	var inCodeMode = false;
-
-	def configure(args: string) -> string {
-		def argMap = MonitorUtil.argMapFrom(args);
-		if (argMap.has("code") || argMap.has("c")) {
-			inCodeMode = true;
-			inBasicBlockMode = true;
-			var codeArg = if (argMap.has("code"), argMap["code"], argMap["c"]);
-			if (codeArg == null) return null;
-			if (Strings.equal(codeArg, "instr") || Strings.equal(codeArg, "i")) {
-				inBasicBlockMode = false;
-			}
-			return null;
-		}
-		def buf = StringBuilder.new();
-		buf.put1("invalid argument(s) \"%s\"", args);
-		return buf.toString();
-	}
 
 	def onParse(m: Module) {
 		for (i < m.functions.length) {
@@ -49,9 +30,9 @@ class CoverageMonitor extends Monitor {
 				if (addToNext) {
 					addToNext = false;
 					isStartOfBlock[offset + bi.pc] = true;
-					if (inBasicBlockMode) Instrumentation.insertProbeAt(m, f.func_index, bi.pc, p);
+					if (!inInstrMode.val) Instrumentation.insertProbeAt(m, f.func_index, bi.pc, p);
 				}
-				if (!inBasicBlockMode) {
+				if (inInstrMode.val) {
 					Instrumentation.insertProbeAt(m, f.func_index, bi.pc, p);
 				}
 				match (op) {
@@ -71,7 +52,7 @@ class CoverageMonitor extends Monitor {
 	}
 
 	def onFinish(i: Instance) {
-		if (inCodeMode) reportCode(entries, isStartOfBlock, executed, inBasicBlockMode);
+		if (inCodeMode.val) reportCode(entries, isStartOfBlock, executed);
 		else report(entries, isStartOfBlock, executed);
 	}
 }
@@ -87,8 +68,7 @@ private class CoverageMonitorProbe(module: Module, func: FuncDecl, monitor: Cove
 def OUT = Trace.OUT;
 def reportCode(entries: Vector<CoverageMonitorProbe>,
 		isStartOfBlock: Vector<bool>,
-		executed: Vector<bool>,
-		inBasicBlockMode: bool) {
+		executed: Vector<bool>) {
 	var lowCoverageThreshold = 75; // in %, for highlighting low coverages
 	var prev: FuncDecl;
 	var tracer = InstrTracer.new(), d = DataReader.new([]);
@@ -101,7 +81,7 @@ def reportCode(entries: Vector<CoverageMonitorProbe>,
 		for (bi = it.reset(e.func); bi.more(); bi.next()) {
 			bi.current();
 			d.reset(e.func.orig_bytecode, bi.pc, e.func.orig_bytecode.length);
-			if (inBasicBlockMode) {
+			if (inInstrMode.val) {
 				var isStart = isStartOfBlock[e.start + bi.pc];
 				if (isStart) {
 					blockCovered = executed[e.start + bi.pc];

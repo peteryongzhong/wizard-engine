@@ -33,8 +33,8 @@ component MonitorOptions {
 				name = Arrays.range(name, 0, i);
 			}
 		}
-		var m = MonitorRegistry.lookupName(name);
-		if (m != null) {
+		var entry = MonitorRegistry.lookupName(name);
+		if (entry != null) {
 			if (args != null) {
 				var msg = m.configure(args);
 				if (msg != null) Trace.OUT.put2("%s: %s", name, msg).outln();

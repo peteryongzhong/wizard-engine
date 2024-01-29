@@ -4,24 +4,11 @@
 def E = MonitorRegistry.register(
 	"hotness", "Tallies \"hot\" execution path counts proportionally.",
 	HotnessMonitor.new());
-def inCodeMode = E // TODO: return Option<int>
-	.addOption("code|c", "emit report with code");
+def inCodeMode = E.newBoolOption("code", "emit report with code");
 
 // Implements a monitor that computes various measures of hotness of the program.
 class HotnessMonitor extends Monitor {
 	var hotness: HotnessData;
-	var inCodeMode = false;
-
-	def configure(args: string) -> string {
-		def argMap = MonitorUtil.argMapFrom(args);
-		if (argMap.has("code") || argMap.has("c")) {
-			inCodeMode = true;
-			return null;
-		}
-		def buf = StringBuilder.new();
-		buf.put1("invalid argument(s) \"%s\"", args);
-		return buf.toString();
-	}
 
 	def onParse(m: Module) {
 		hotness = HotnessData.new(m);
@@ -41,7 +28,7 @@ class HotnessMonitor extends Monitor {
 		onFinish(null);
 	}
 	def onFinish(i: Instance) {
-		if (inCodeMode) hotness.reportCode();
+		if (inCodeMode.val) hotness.reportCode();
 		else hotness.report();
 	}
 }

@@ -12,9 +12,9 @@ component MonitorRegistry {
 		return entry;
 	}
 	// Look up a monitor by its exact name, returning {null} if not found.
-	def lookupName(name: string) -> Monitor {
+	def lookupName(name: string) -> MonitorRegistryEntry {
 		for (l = list; l != null; l = l.tail) {
-			if (Strings.equal(name, l.head.name)) return l.head.monitor;
+			if (Strings.equal(name, l.head.name)) return l.head;
 		}
 		return null;
 	}
@@ -47,7 +47,16 @@ def LT(a: MonitorRegistryEntry, b: MonitorRegistryEntry) -> bool {
 class MonitorRegistryEntry(name: string, help: string, monitor: Monitor) {
 	private var options: List<(string, string)>;
 
-	def addOption(name: string, help: string) -> this {
+	def newIntOption(name: string, help: string, defval: int) -> Option<int> {
+		options = List.new((Strings.format1("%s=<int>", name), help), options);
+		return null; // TODO
+	}
+	def newBoolOption(name: string, help: string) -> Option<bool> {
 		options = List.new((name, help), options);
+		return null; // TODO
+	}
+	def newFilterOption(name: string, help: string) -> Option<DeclFilter> {
+		options = List.new((Strings.format1("%s=<filter>", name), help), options);
+		return null; // TODO
 	}
 }
