@@ -2,8 +2,6 @@
 // See LICENSE for details of Apache 2.0 license.
 
 def FINISHED: Throwable = null;
-def I: X86_64Interpreter;
-
 // Shared runtime routines that are called by both the fast interpreter and JITed code.
 component X86_64Runtime {
 	var curStack: X86_64Stack;
@@ -96,33 +94,6 @@ component X86_64Runtime {
 		for (i = r.length - 1; i >= 0; i--) r[i] = curStack.pop(rt[i]);
 		return Result.Value(r);
 	}
-	def getFrameAccessor(sp: Pointer) -> FrameAccessor {
-		var retip = (sp + -Pointer.SIZE).load<Pointer>();
-		var code = RiRuntime.findUserCode(retip);
-		match (code) {
-			x: X86_64InterpreterCode => {
-				var prev = (sp + X86_64InterpreterFrame.accessor.offset).load<X86_64FrameAccessor>();
-				if (prev != null) return prev;
-				// Interpreter frames store the {WasmFunction} _and_ {FuncDecl}.
-				var decl = (sp + X86_64InterpreterFrame.func_decl.offset).load<FuncDecl>();
-				var n = X86_64FrameAccessor.new(curStack, sp, decl);
-				(sp + X86_64InterpreterFrame.accessor.offset).store<X86_64FrameAccessor>(n);
-				return n;
-			}
-			x: X86_64SpcCode => {
-				var prev = (sp + X86_64InterpreterFrame.accessor.offset).load<X86_64FrameAccessor>();
-				if (prev != null) return prev;
-				// SPC frames only store the {WasmFunction}.
-				var wf = (sp + X86_64InterpreterFrame.wasm_func.offset).load<WasmFunction>();
-				// TODO: assert wf.decl == x.decl()
-				var n = X86_64FrameAccessor.new(curStack, sp, wf.decl);
-				(sp + X86_64InterpreterFrame.accessor.offset).store<X86_64FrameAccessor>(n);
-				return n;
-			}
-		}
-		return null;
-	}
-
 	//=====================================================================
 	// Standard callbacks for complex bytecodes
 	//=====================================================================
