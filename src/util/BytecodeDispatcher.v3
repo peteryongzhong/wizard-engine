@@ -1,0 +1,1473 @@
+// Copyright 2022 Ben L. Titzer. All rights reserved.
+// See LICENSE for details of Apache 2.0 license.
+
+// A utility that serves as a base class for defining behavior on bytecodes, defining one
+// method per opcode as well as categories. The default implementation of each method calls
+// the appropriate category method, allowing many instructions to be handled by overriding
+// one or more methods.
+class BytecodeDispatcher {
+	private def codeptr: CodePtr;
+	def var code: Range<byte>;
+	def var pc: u32;
+	def var pos: u32;
+
+	def reset(code: Range<byte>, pc: u31) -> this {
+		codeptr.reset(code, pc, code.length);
+		this.pc = pc;
+	}
+
+	def dispatch() {
+		pos = pc;
+		if (pos >= code.length) return error_EOF(pos);
+		var b = code[pos++];
+		match (b) {
+			// Unprefixed (single-byte) opcodes.
+			Opcode.CRASH_EXEC.code =>		visit_CRASH_EXEC();
+			Opcode.CRASH_COMPILER.code =>		visit_CRASH_COMPILER();
+			Opcode.UNREACHABLE.code =>		visit_UNREACHABLE();
+			Opcode.NOP.code =>			visit_NOP();
+			Opcode.BLOCK.code =>			visit_BLOCK_noimm();
+			Opcode.LOOP.code =>			visit_LOOP_noimm();
+			Opcode.IF.code =>			visit_IF_noimm();
+			Opcode.ELSE.code =>			visit_ELSE();
+			Opcode.TRY.code =>			visit_TRY_noimm();
+			Opcode.CATCH.code =>			visit_CATCH_noimm();
+			Opcode.THROW.code =>			visit_THROW_noimm();
+			Opcode.RETHROW.code =>			visit_RETHROW_noimm();
+			Opcode.THROW_REF.code =>		visit_THROW_REF();
+			Opcode.END.code =>			visit_END();
+			Opcode.BR.code =>			visit_BR_noimm();
+			Opcode.BR_IF.code =>			visit_BR_IF_noimm();
+			Opcode.BR_TABLE.code =>			visit_BR_TABLE_noimm();
+			Opcode.RETURN.code =>			visit_RETURN();
+			Opcode.CALL.code =>			visit_CALL_noimm();
+			Opcode.CALL_INDIRECT.code =>		visit_CALL_INDIRECT_noimm();
+			Opcode.RETURN_CALL.code =>		visit_RETURN_CALL_noimm();
+			Opcode.RETURN_CALL_INDIRECT.code =>	visit_RETURN_CALL_INDIRECT_noimm();
+			Opcode.CALL_REF.code =>			visit_CALL_REF_noimm();
+			Opcode.RETURN_CALL_REF.code =>		visit_RETURN_CALL_REF_noimm();
+			Opcode.DELEGATE.code =>			visit_DELEGATE_noimm();
+			Opcode.CATCH_ALL.code =>		visit_CATCH_ALL();
+			Opcode.DROP.code =>			visit_DROP();
+			Opcode.SELECT.code =>			visit_SELECT();
+			Opcode.SELECT_T.code =>			visit_SELECT_T_noimm();
+			Opcode.TRY_TABLE.code =>		visit_TRY_TABLE_noimm();
+			Opcode.LOCAL_GET.code =>		visit_LOCAL_GET_noimm();
+			Opcode.LOCAL_SET.code =>		visit_LOCAL_SET_noimm();
+			Opcode.LOCAL_TEE.code =>		visit_LOCAL_TEE_noimm();
+			Opcode.GLOBAL_GET.code =>		visit_GLOBAL_GET_noimm();
+			Opcode.GLOBAL_SET.code =>		visit_GLOBAL_SET_noimm();
+			Opcode.TABLE_GET.code =>		visit_TABLE_GET_noimm();
+			Opcode.TABLE_SET.code =>		visit_TABLE_SET_noimm();
+			Opcode.I32_LOAD.code =>			visit_I32_LOAD_noimm();
+			Opcode.I64_LOAD.code =>			visit_I64_LOAD_noimm();
+			Opcode.F32_LOAD.code =>			visit_F32_LOAD_noimm();
+			Opcode.F64_LOAD.code =>			visit_F64_LOAD_noimm();
+			Opcode.I32_LOAD8_S.code =>		visit_I32_LOAD8_S_noimm();
+			Opcode.I32_LOAD8_U.code =>		visit_I32_LOAD8_U_noimm();
+			Opcode.I32_LOAD16_S.code =>		visit_I32_LOAD16_S_noimm();
+			Opcode.I32_LOAD16_U.code =>		visit_I32_LOAD16_U_noimm();
+			Opcode.I64_LOAD8_S.code =>		visit_I64_LOAD8_S_noimm();
+			Opcode.I64_LOAD8_U.code =>		visit_I64_LOAD8_U_noimm();
+			Opcode.I64_LOAD16_S.code =>		visit_I64_LOAD16_S_noimm();
+			Opcode.I64_LOAD16_U.code =>		visit_I64_LOAD16_U_noimm();
+			Opcode.I64_LOAD32_S.code =>		visit_I64_LOAD32_S_noimm();
+			Opcode.I64_LOAD32_U.code =>		visit_I64_LOAD32_U_noimm();
+			Opcode.I32_STORE.code =>		visit_I32_STORE_noimm();
+			Opcode.I64_STORE.code =>		visit_I64_STORE_noimm();
+			Opcode.F32_STORE.code =>		visit_F32_STORE_noimm();
+			Opcode.F64_STORE.code =>		visit_F64_STORE_noimm();
+			Opcode.I32_STORE8.code =>		visit_I32_STORE8_noimm();
+			Opcode.I32_STORE16.code =>		visit_I32_STORE16_noimm();
+			Opcode.I64_STORE8.code =>		visit_I64_STORE8_noimm();
+			Opcode.I64_STORE16.code =>		visit_I64_STORE16_noimm();
+			Opcode.I64_STORE32.code =>		visit_I64_STORE32_noimm();
+			Opcode.MEMORY_SIZE.code =>		visit_MEMORY_SIZE_noimm();
+			Opcode.MEMORY_GROW.code =>		visit_MEMORY_GROW_noimm();
+			Opcode.I32_CONST.code =>		visit_I32_CONST_noimm();
+			Opcode.I64_CONST.code =>		visit_I64_CONST_noimm();
+			Opcode.F32_CONST.code =>		visit_F32_CONST_noimm();
+			Opcode.F64_CONST.code =>		visit_F64_CONST_noimm();
+			Opcode.I32_EQZ.code =>			visit_I32_EQZ();
+			Opcode.I32_EQ.code =>			visit_I32_EQ();
+			Opcode.I32_NE.code =>			visit_I32_NE();
+			Opcode.I32_LT_S.code =>			visit_I32_LT_S();
+			Opcode.I32_LT_U.code =>			visit_I32_LT_U();
+			Opcode.I32_GT_S.code =>			visit_I32_GT_S();
+			Opcode.I32_GT_U.code =>			visit_I32_GT_U();
+			Opcode.I32_LE_S.code =>			visit_I32_LE_S();
+			Opcode.I32_LE_U.code =>			visit_I32_LE_U();
+			Opcode.I32_GE_S.code =>			visit_I32_GE_S();
+			Opcode.I32_GE_U.code =>			visit_I32_GE_U();
+			Opcode.I64_EQZ.code =>			visit_I64_EQZ();
+			Opcode.I64_EQ.code =>			visit_I64_EQ();
+			Opcode.I64_NE.code =>			visit_I64_NE();
+			Opcode.I64_LT_S.code =>			visit_I64_LT_S();
+			Opcode.I64_LT_U.code =>			visit_I64_LT_U();
+			Opcode.I64_GT_S.code =>			visit_I64_GT_S();
+			Opcode.I64_GT_U.code =>			visit_I64_GT_U();
+			Opcode.I64_LE_S.code =>			visit_I64_LE_S();
+			Opcode.I64_LE_U.code =>			visit_I64_LE_U();
+			Opcode.I64_GE_S.code =>			visit_I64_GE_S();
+			Opcode.I64_GE_U.code =>			visit_I64_GE_U();
+			Opcode.F32_EQ.code =>			visit_F32_EQ();
+			Opcode.F32_NE.code =>			visit_F32_NE();
+			Opcode.F32_LT.code =>			visit_F32_LT();
+			Opcode.F32_GT.code =>			visit_F32_GT();
+			Opcode.F32_LE.code =>			visit_F32_LE();
+			Opcode.F32_GE.code =>			visit_F32_GE();
+			Opcode.F64_EQ.code =>			visit_F64_EQ();
+			Opcode.F64_NE.code =>			visit_F64_NE();
+			Opcode.F64_LT.code =>			visit_F64_LT();
+			Opcode.F64_GT.code =>			visit_F64_GT();
+			Opcode.F64_LE.code =>			visit_F64_LE();
+			Opcode.F64_GE.code =>			visit_F64_GE();
+			Opcode.I32_CLZ.code =>			visit_I32_CLZ();
+			Opcode.I32_CTZ.code =>			visit_I32_CTZ();
+			Opcode.I32_POPCNT.code =>		visit_I32_POPCNT();
+			Opcode.I32_ADD.code =>			visit_I32_ADD();
+			Opcode.I32_SUB.code =>			visit_I32_SUB();
+			Opcode.I32_MUL.code =>			visit_I32_MUL();
+			Opcode.I32_DIV_S.code =>		visit_I32_DIV_S();
+			Opcode.I32_DIV_U.code =>		visit_I32_DIV_U();
+			Opcode.I32_REM_S.code =>		visit_I32_REM_S();
+			Opcode.I32_REM_U.code =>		visit_I32_REM_U();
+			Opcode.I32_AND.code =>			visit_I32_AND();
+			Opcode.I32_OR.code =>			visit_I32_OR();
+			Opcode.I32_XOR.code =>			visit_I32_XOR();
+			Opcode.I32_SHL.code =>			visit_I32_SHL();
+			Opcode.I32_SHR_S.code =>		visit_I32_SHR_S();
+			Opcode.I32_SHR_U.code =>		visit_I32_SHR_U();
+			Opcode.I32_ROTL.code =>			visit_I32_ROTL();
+			Opcode.I32_ROTR.code =>			visit_I32_ROTR();
+			Opcode.I64_CLZ.code =>			visit_I64_CLZ();
+			Opcode.I64_CTZ.code =>			visit_I64_CTZ();
+			Opcode.I64_POPCNT.code =>		visit_I64_POPCNT();
+			Opcode.I64_ADD.code =>			visit_I64_ADD();
+			Opcode.I64_SUB.code =>			visit_I64_SUB();
+			Opcode.I64_MUL.code =>			visit_I64_MUL();
+			Opcode.I64_DIV_S.code =>		visit_I64_DIV_S();
+			Opcode.I64_DIV_U.code =>		visit_I64_DIV_U();
+			Opcode.I64_REM_S.code =>		visit_I64_REM_S();
+			Opcode.I64_REM_U.code =>		visit_I64_REM_U();
+			Opcode.I64_AND.code =>			visit_I64_AND();
+			Opcode.I64_OR.code =>			visit_I64_OR();
+			Opcode.I64_XOR.code =>			visit_I64_XOR();
+			Opcode.I64_SHL.code =>			visit_I64_SHL();
+			Opcode.I64_SHR_S.code =>		visit_I64_SHR_S();
+			Opcode.I64_SHR_U.code =>		visit_I64_SHR_U();
+			Opcode.I64_ROTL.code =>			visit_I64_ROTL();
+			Opcode.I64_ROTR.code =>			visit_I64_ROTR();
+			Opcode.F32_ABS.code =>			visit_F32_ABS();
+			Opcode.F32_NEG.code =>			visit_F32_NEG();
+			Opcode.F32_CEIL.code =>			visit_F32_CEIL();
+			Opcode.F32_FLOOR.code =>		visit_F32_FLOOR();
+			Opcode.F32_TRUNC.code =>		visit_F32_TRUNC();
+			Opcode.F32_NEAREST.code =>		visit_F32_NEAREST();
+			Opcode.F32_SQRT.code =>			visit_F32_SQRT();
+			Opcode.F32_ADD.code =>			visit_F32_ADD();
+			Opcode.F32_SUB.code =>			visit_F32_SUB();
+			Opcode.F32_MUL.code =>			visit_F32_MUL();
+			Opcode.F32_DIV.code =>			visit_F32_DIV();
+			Opcode.F32_MIN.code =>			visit_F32_MIN();
+			Opcode.F32_MAX.code =>			visit_F32_MAX();
+			Opcode.F32_COPYSIGN.code =>		visit_F32_COPYSIGN();
+			Opcode.F64_ABS.code =>			visit_F64_ABS();
+			Opcode.F64_NEG.code =>			visit_F64_NEG();
+			Opcode.F64_CEIL.code =>			visit_F64_CEIL();
+			Opcode.F64_FLOOR.code =>		visit_F64_FLOOR();
+			Opcode.F64_TRUNC.code =>		visit_F64_TRUNC();
+			Opcode.F64_NEAREST.code =>		visit_F64_NEAREST();
+			Opcode.F64_SQRT.code =>			visit_F64_SQRT();
+			Opcode.F64_ADD.code =>			visit_F64_ADD();
+			Opcode.F64_SUB.code =>			visit_F64_SUB();
+			Opcode.F64_MUL.code =>			visit_F64_MUL();
+			Opcode.F64_DIV.code =>			visit_F64_DIV();
+			Opcode.F64_MIN.code =>			visit_F64_MIN();
+			Opcode.F64_MAX.code =>			visit_F64_MAX();
+			Opcode.F64_COPYSIGN.code =>		visit_F64_COPYSIGN();
+			Opcode.I32_WRAP_I64.code =>		visit_I32_WRAP_I64();
+			Opcode.I32_TRUNC_F32_S.code =>		visit_I32_TRUNC_F32_S();
+			Opcode.I32_TRUNC_F32_U.code =>		visit_I32_TRUNC_F32_U();
+			Opcode.I32_TRUNC_F64_S.code =>		visit_I32_TRUNC_F64_S();
+			Opcode.I32_TRUNC_F64_U.code =>		visit_I32_TRUNC_F64_U();
+			Opcode.I64_EXTEND_I32_S.code =>		visit_I64_EXTEND_I32_S();
+			Opcode.I64_EXTEND_I32_U.code =>		visit_I64_EXTEND_I32_U();
+			Opcode.I64_TRUNC_F32_S.code =>		visit_I64_TRUNC_F32_S();
+			Opcode.I64_TRUNC_F32_U.code =>		visit_I64_TRUNC_F32_U();
+			Opcode.I64_TRUNC_F64_S.code =>		visit_I64_TRUNC_F64_S();
+			Opcode.I64_TRUNC_F64_U.code =>		visit_I64_TRUNC_F64_U();
+			Opcode.F32_CONVERT_I32_S.code =>	visit_F32_CONVERT_I32_S();
+			Opcode.F32_CONVERT_I32_U.code =>	visit_F32_CONVERT_I32_U();
+			Opcode.F32_CONVERT_I64_S.code =>	visit_F32_CONVERT_I64_S();
+			Opcode.F32_CONVERT_I64_U.code =>	visit_F32_CONVERT_I64_U();
+			Opcode.F32_DEMOTE_F64.code =>		visit_F32_DEMOTE_F64();
+			Opcode.F64_CONVERT_I32_S.code =>	visit_F64_CONVERT_I32_S();
+			Opcode.F64_CONVERT_I32_U.code =>	visit_F64_CONVERT_I32_U();
+			Opcode.F64_CONVERT_I64_S.code =>	visit_F64_CONVERT_I64_S();
+			Opcode.F64_CONVERT_I64_U.code =>	visit_F64_CONVERT_I64_U();
+			Opcode.F64_PROMOTE_F32.code =>		visit_F64_PROMOTE_F32();
+			Opcode.I32_REINTERPRET_F32.code =>	visit_I32_REINTERPRET_F32();
+			Opcode.I64_REINTERPRET_F64.code =>	visit_I64_REINTERPRET_F64();
+			Opcode.F32_REINTERPRET_I32.code =>	visit_F32_REINTERPRET_I32();
+			Opcode.F64_REINTERPRET_I64.code =>	visit_F64_REINTERPRET_I64();
+			Opcode.I32_EXTEND8_S.code =>		visit_I32_EXTEND8_S();
+			Opcode.I32_EXTEND16_S.code =>		visit_I32_EXTEND16_S();
+			Opcode.I64_EXTEND8_S.code =>		visit_I64_EXTEND8_S();
+			Opcode.I64_EXTEND16_S.code =>		visit_I64_EXTEND16_S();
+			Opcode.I64_EXTEND32_S.code =>		visit_I64_EXTEND32_S();
+			Opcode.REF_NULL.code =>			visit_REF_NULL_noimm();
+			Opcode.REF_IS_NULL.code =>		visit_REF_IS_NULL();
+			Opcode.REF_FUNC.code =>			visit_REF_FUNC_noimm();
+			Opcode.REF_AS_NON_NULL.code =>		visit_REF_AS_NON_NULL();
+			Opcode.BR_ON_NULL.code =>		visit_BR_ON_NULL_noimm();
+			Opcode.REF_EQ.code =>			visit_REF_EQ();
+			Opcode.BR_ON_NON_NULL.code =>		visit_BR_ON_NON_NULL_noimm();
+
+			// Prefixed opcodes: 0xFB
+			0xFB => {
+				var s = read_uleb31();
+				match (s) {
+			Opcode.STRUCT_NEW.code =>		visit_STRUCT_NEW_noimm();
+			Opcode.STRUCT_NEW_DEFAULT.code =>	visit_STRUCT_NEW_DEFAULT_noimm();
+			Opcode.STRUCT_GET.code =>		visit_STRUCT_GET_noimm();
+			Opcode.STRUCT_GET_S.code =>		visit_STRUCT_GET_S_noimm();
+			Opcode.STRUCT_GET_U.code =>		visit_STRUCT_GET_U_noimm();
+			Opcode.STRUCT_SET.code =>		visit_STRUCT_SET_noimm();
+			Opcode.ARRAY_FILL.code =>		visit_ARRAY_FILL_noimm();
+			Opcode.ARRAY_NEW.code =>		visit_ARRAY_NEW_noimm();
+			Opcode.ARRAY_NEW_DEFAULT.code =>	visit_ARRAY_NEW_DEFAULT_noimm();
+			Opcode.ARRAY_GET.code =>		visit_ARRAY_GET_noimm();
+			Opcode.ARRAY_GET_S.code =>		visit_ARRAY_GET_S_noimm();
+			Opcode.ARRAY_GET_U.code =>		visit_ARRAY_GET_U_noimm();
+			Opcode.ARRAY_SET.code =>		visit_ARRAY_SET_noimm();
+			Opcode.ARRAY_LEN.code =>		visit_ARRAY_LEN();
+			Opcode.ARRAY_COPY.code =>		visit_ARRAY_COPY_noimm();
+			Opcode.ARRAY_NEW_FIXED.code =>		visit_ARRAY_NEW_FIXED_noimm();
+			Opcode.ARRAY_NEW_DATA.code =>		visit_ARRAY_NEW_DATA_noimm();
+			Opcode.ARRAY_NEW_ELEM.code =>		visit_ARRAY_NEW_ELEM_noimm();
+			Opcode.I31_NEW.code =>			visit_I31_NEW();
+			Opcode.I31_GET_S.code =>		visit_I31_GET_S();
+			Opcode.I31_GET_U.code =>		visit_I31_GET_U();
+			Opcode.REF_TEST.code =>			visit_REF_TEST_noimm();
+			Opcode.REF_CAST.code =>			visit_REF_CAST_noimm();
+			Opcode.BR_ON_CAST.code =>		visit_BR_ON_CAST_noimm();
+			Opcode.BR_ON_CAST_FAIL.code =>		visit_BR_ON_CAST_FAIL_noimm();
+			Opcode.REF_TEST_NULL.code =>		visit_REF_TEST_NULL_noimm();
+			Opcode.REF_CAST_NULL.code =>		visit_REF_CAST_NULL_noimm();
+			Opcode.ARRAY_INIT_DATA.code => 		visit_ARRAY_INIT_DATA_noimm();
+			Opcode.ARRAY_INIT_ELEM.code =>		visit_ARRAY_INIT_ELEM_noimm();
+			Opcode.EXTERN_INTERNALIZE.code =>	visit_EXTERN_INTERNALIZE();
+			Opcode.EXTERN_EXTERNALIZE.code =>	visit_EXTERN_EXTERNALIZE();
+					u31.max => ;
+					_ => this.visit_INVALID(b, s);
+				}
+			}
+			// Prefixed opcodes: 0xFC
+			0xFC => {
+				var s = read_uleb31(); 
+				match (s) {
+			Opcode.I32_TRUNC_SAT_F32_S.code =>	visit_I32_TRUNC_SAT_F32_S();
+			Opcode.I32_TRUNC_SAT_F32_U.code =>	visit_I32_TRUNC_SAT_F32_U();
+			Opcode.I32_TRUNC_SAT_F64_S.code =>	visit_I32_TRUNC_SAT_F64_S();
+			Opcode.I32_TRUNC_SAT_F64_U.code =>	visit_I32_TRUNC_SAT_F64_U();
+			Opcode.I64_TRUNC_SAT_F32_S.code =>	visit_I64_TRUNC_SAT_F32_S();
+			Opcode.I64_TRUNC_SAT_F32_U.code =>	visit_I64_TRUNC_SAT_F32_U();
+			Opcode.I64_TRUNC_SAT_F64_S.code =>	visit_I64_TRUNC_SAT_F64_S();
+			Opcode.I64_TRUNC_SAT_F64_U.code =>	visit_I64_TRUNC_SAT_F64_U();
+			Opcode.MEMORY_INIT.code =>		visit_MEMORY_INIT_noimm();
+			Opcode.DATA_DROP.code =>		visit_DATA_DROP_noimm();
+			Opcode.MEMORY_COPY.code =>		visit_MEMORY_COPY_noimm();
+			Opcode.MEMORY_FILL.code =>		visit_MEMORY_FILL_noimm();
+			Opcode.TABLE_INIT.code =>		visit_TABLE_INIT_noimm();
+			Opcode.ELEM_DROP.code =>		visit_ELEM_DROP_noimm();
+			Opcode.TABLE_COPY.code =>		visit_TABLE_COPY_noimm();
+			Opcode.TABLE_GROW.code =>		visit_TABLE_GROW_noimm();
+			Opcode.TABLE_SIZE.code =>		visit_TABLE_SIZE_noimm();
+			Opcode.TABLE_FILL.code =>		visit_TABLE_FILL_noimm();
+					u31.max => ;
+					_ => this.visit_INVALID(b, s);
+				}
+			}
+			// Prefixed opcodes: 0xFD
+			0xFD => {
+				var s = read_uleb31(); 
+				match (s) {
+			Opcode.V128_LOAD.code =>		visit_V128_LOAD_noimm();
+			Opcode.V128_LOAD_8X8_S.code =>		visit_V128_LOAD_8X8_S_noimm();
+			Opcode.V128_LOAD_8X8_U.code =>		visit_V128_LOAD_8X8_U_noimm();
+			Opcode.V128_LOAD_16X4_S.code =>		visit_V128_LOAD_16X4_S_noimm();
+			Opcode.V128_LOAD_16X4_U.code =>		visit_V128_LOAD_16X4_U_noimm();
+			Opcode.V128_LOAD_32X2_S.code =>		visit_V128_LOAD_32X2_S_noimm();
+			Opcode.V128_LOAD_32X2_U.code =>		visit_V128_LOAD_32X2_U_noimm();
+			Opcode.V128_LOAD_8_SPLAT.code =>	visit_V128_LOAD_8_SPLAT_noimm();
+			Opcode.V128_LOAD_16_SPLAT.code =>	visit_V128_LOAD_16_SPLAT_noimm();
+			Opcode.V128_LOAD_32_SPLAT.code =>	visit_V128_LOAD_32_SPLAT_noimm();
+			Opcode.V128_LOAD_64_SPLAT.code =>	visit_V128_LOAD_64_SPLAT_noimm();
+			Opcode.V128_LOAD_32_ZERO.code =>	visit_V128_LOAD_32_ZERO_noimm();
+			Opcode.V128_LOAD_64_ZERO.code =>	visit_V128_LOAD_64_ZERO_noimm();
+			Opcode.V128_STORE.code =>		visit_V128_STORE_noimm();
+			Opcode.V128_LOAD_8_LANE.code =>		visit_V128_LOAD_8_LANE_noimm();
+			Opcode.V128_LOAD_16_LANE.code =>	visit_V128_LOAD_16_LANE_noimm();
+			Opcode.V128_LOAD_32_LANE.code =>	visit_V128_LOAD_32_LANE_noimm();
+			Opcode.V128_LOAD_64_LANE.code =>	visit_V128_LOAD_64_LANE_noimm();
+			Opcode.V128_STORE_8_LANE.code =>	visit_V128_STORE_8_LANE_noimm();
+			Opcode.V128_STORE_16_LANE.code =>	visit_V128_STORE_16_LANE_noimm();
+			Opcode.V128_STORE_32_LANE.code =>	visit_V128_STORE_32_LANE_noimm();
+			Opcode.V128_STORE_64_LANE.code =>	visit_V128_STORE_64_LANE_noimm();
+			Opcode.V128_CONST.code =>		visit_V128_CONST_noimm();
+			Opcode.I8X16_SHUFFLE.code =>		visit_I8X16_SHUFFLE_noimm();
+			Opcode.I8X16_EXTRACTLANE_S.code =>	visit_I8X16_EXTRACTLANE_S_noimm();
+			Opcode.I8X16_EXTRACTLANE_U.code =>	visit_I8X16_EXTRACTLANE_U_noimm();
+			Opcode.I8X16_REPLACELANE.code =>	visit_I8X16_REPLACELANE_noimm();
+			Opcode.I16X8_EXTRACTLANE_S.code =>	visit_I16X8_EXTRACTLANE_S_noimm();
+			Opcode.I16X8_EXTRACTLANE_U.code =>	visit_I16X8_EXTRACTLANE_U_noimm();
+			Opcode.I16X8_REPLACELANE.code =>	visit_I16X8_REPLACELANE_noimm();
+			Opcode.I32X4_EXTRACTLANE.code =>	visit_I32X4_EXTRACTLANE_noimm();
+			Opcode.I32X4_REPLACELANE.code =>	visit_I32X4_REPLACELANE_noimm();
+			Opcode.I64X2_EXTRACTLANE.code =>	visit_I64X2_EXTRACTLANE_noimm();
+			Opcode.I64X2_REPLACELANE.code =>	visit_I64X2_REPLACELANE_noimm();
+			Opcode.F32X4_EXTRACTLANE.code =>	visit_F32X4_EXTRACTLANE_noimm();
+			Opcode.F32X4_REPLACELANE.code =>	visit_F32X4_REPLACELANE_noimm();
+			Opcode.F64X2_EXTRACTLANE.code =>	visit_F64X2_EXTRACTLANE_noimm();
+			Opcode.F64X2_REPLACELANE.code =>	visit_F64X2_REPLACELANE_noimm();
+			Opcode.I8X16_SWIZZLE.code =>		visit_I8X16_SWIZZLE();
+			Opcode.I8X16_SPLAT.code =>		visit_I8X16_SPLAT();
+			Opcode.I16X8_SPLAT.code =>		visit_I16X8_SPLAT();
+			Opcode.I32X4_SPLAT.code =>		visit_I32X4_SPLAT();
+			Opcode.I64X2_SPLAT.code =>		visit_I64X2_SPLAT();
+			Opcode.F32X4_SPLAT.code =>		visit_F32X4_SPLAT();
+			Opcode.F64X2_SPLAT.code =>		visit_F64X2_SPLAT();
+			Opcode.I8X16_EQ.code =>			visit_I8X16_EQ();
+			Opcode.I8X16_NE.code =>			visit_I8X16_NE();
+			Opcode.I8X16_LT_S.code =>		visit_I8X16_LT_S();
+			Opcode.I8X16_LT_U.code =>		visit_I8X16_LT_U();
+			Opcode.I8X16_GT_S.code =>		visit_I8X16_GT_S();
+			Opcode.I8X16_GT_U.code =>		visit_I8X16_GT_U();
+			Opcode.I8X16_LE_S.code =>		visit_I8X16_LE_S();
+			Opcode.I8X16_LE_U.code =>		visit_I8X16_LE_U();
+			Opcode.I8X16_GE_S.code =>		visit_I8X16_GE_S();
+			Opcode.I8X16_GE_U.code =>		visit_I8X16_GE_U();
+			Opcode.I16X8_EQ.code =>			visit_I16X8_EQ();
+			Opcode.I16X8_NE.code =>			visit_I16X8_NE();
+			Opcode.I16X8_LT_S.code =>		visit_I16X8_LT_S();
+			Opcode.I16X8_LT_U.code =>		visit_I16X8_LT_U();
+			Opcode.I16X8_GT_S.code =>		visit_I16X8_GT_S();
+			Opcode.I16X8_GT_U.code =>		visit_I16X8_GT_U();
+			Opcode.I16X8_LE_S.code =>		visit_I16X8_LE_S();
+			Opcode.I16X8_LE_U.code =>		visit_I16X8_LE_U();
+			Opcode.I16X8_GE_S.code =>		visit_I16X8_GE_S();
+			Opcode.I16X8_GE_U.code =>		visit_I16X8_GE_U();
+			Opcode.I32X4_EQ.code =>			visit_I32X4_EQ();
+			Opcode.I32X4_NE.code =>			visit_I32X4_NE();
+			Opcode.I32X4_LT_S.code =>		visit_I32X4_LT_S();
+			Opcode.I32X4_LT_U.code =>		visit_I32X4_LT_U();
+			Opcode.I32X4_GT_S.code =>		visit_I32X4_GT_S();
+			Opcode.I32X4_GT_U.code =>		visit_I32X4_GT_U();
+			Opcode.I32X4_LE_S.code =>		visit_I32X4_LE_S();
+			Opcode.I32X4_LE_U.code =>		visit_I32X4_LE_U();
+			Opcode.I32X4_GE_S.code =>		visit_I32X4_GE_S();
+			Opcode.I32X4_GE_U.code =>		visit_I32X4_GE_U();
+			Opcode.I64X2_EQ.code =>			visit_I64X2_EQ();
+			Opcode.I64X2_NE.code =>			visit_I64X2_NE();
+			Opcode.I64X2_LT_S.code =>		visit_I64X2_LT_S();
+			Opcode.I64X2_GT_S.code =>		visit_I64X2_GT_S();
+			Opcode.I64X2_LE_S.code =>		visit_I64X2_LE_S();
+			Opcode.I64X2_GE_S.code =>		visit_I64X2_GE_S();
+			Opcode.F32X4_EQ.code =>			visit_F32X4_EQ();
+			Opcode.F32X4_NE.code =>			visit_F32X4_NE();
+			Opcode.F32X4_LT.code =>			visit_F32X4_LT();
+			Opcode.F32X4_GT.code =>			visit_F32X4_GT();
+			Opcode.F32X4_LE.code =>			visit_F32X4_LE();
+			Opcode.F32X4_GE.code =>			visit_F32X4_GE();
+			Opcode.F64X2_EQ.code =>			visit_F64X2_EQ();
+			Opcode.F64X2_NE.code =>			visit_F64X2_NE();
+			Opcode.F64X2_LT.code =>			visit_F64X2_LT();
+			Opcode.F64X2_GT.code =>			visit_F64X2_GT();
+			Opcode.F64X2_LE.code =>			visit_F64X2_LE();
+			Opcode.F64X2_GE.code =>			visit_F64X2_GE();
+			Opcode.V128_NOT.code =>			visit_V128_NOT();
+			Opcode.V128_AND.code =>			visit_V128_AND();
+			Opcode.V128_ANDNOT.code =>		visit_V128_ANDNOT();
+			Opcode.V128_OR.code =>			visit_V128_OR();
+			Opcode.V128_XOR.code =>			visit_V128_XOR();
+			Opcode.V128_BITSELECT.code =>		visit_V128_BITSELECT();
+			Opcode.V128_ANYTRUE.code =>		visit_V128_ANYTRUE();
+			Opcode.I8X16_ABS.code =>		visit_I8X16_ABS();
+			Opcode.I8X16_NEG.code =>		visit_I8X16_NEG();
+			Opcode.I8X16_POPCNT.code =>		visit_I8X16_POPCNT();
+			Opcode.I8X16_ALLTRUE.code =>		visit_I8X16_ALLTRUE();
+			Opcode.I8X16_BITMASK.code =>		visit_I8X16_BITMASK();
+			Opcode.I8X16_NARROW_I16X8_S.code =>	visit_I8X16_NARROW_I16X8_S();
+			Opcode.I8X16_NARROW_I16X8_U.code =>	visit_I8X16_NARROW_I16X8_U();
+			Opcode.I8X16_SHL.code =>		visit_I8X16_SHL();
+			Opcode.I8X16_SHR_S.code =>		visit_I8X16_SHR_S();
+			Opcode.I8X16_SHR_U.code =>		visit_I8X16_SHR_U();
+			Opcode.I8X16_ADD.code =>		visit_I8X16_ADD();
+			Opcode.I8X16_ADD_SAT_S.code =>		visit_I8X16_ADD_SAT_S();
+			Opcode.I8X16_ADD_SAT_U.code =>		visit_I8X16_ADD_SAT_U();
+			Opcode.I8X16_SUB.code =>		visit_I8X16_SUB();
+			Opcode.I8X16_SUB_SAT_S.code =>		visit_I8X16_SUB_SAT_S();
+			Opcode.I8X16_SUB_SAT_U.code =>		visit_I8X16_SUB_SAT_U();
+			Opcode.I8X16_MIN_S.code =>		visit_I8X16_MIN_S();
+			Opcode.I8X16_MIN_U.code =>		visit_I8X16_MIN_U();
+			Opcode.I8X16_MAX_S.code =>		visit_I8X16_MAX_S();
+			Opcode.I8X16_MAX_U.code =>		visit_I8X16_MAX_U();
+			Opcode.I8X16_AVGR_U.code =>		visit_I8X16_AVGR_U();
+			Opcode.I16X8_EXTADDPAIRWISE_I8X16_S.code =>	visit_I16X8_EXTADDPAIRWISE_I8X16_S();
+			Opcode.I16X8_EXTADDPAIRWISE_I8X16_U.code =>	visit_I16X8_EXTADDPAIRWISE_I8X16_U();
+			Opcode.I16X8_ABS.code =>		visit_I16X8_ABS();
+			Opcode.I16X8_NEG.code =>		visit_I16X8_NEG();
+			Opcode.I16X8_Q15MULRSAT_S.code =>	visit_I16X8_Q15MULRSAT_S();
+			Opcode.I16X8_ALLTRUE.code =>		visit_I16X8_ALLTRUE();
+			Opcode.I16X8_BITMASK.code =>		visit_I16X8_BITMASK();
+			Opcode.I16X8_NARROW_I32X4_S.code =>	visit_I16X8_NARROW_I32X4_S();
+			Opcode.I16X8_NARROW_I32X4_U.code =>	visit_I16X8_NARROW_I32X4_U();
+			Opcode.I16X8_EXTEND_LOW_I8X16_S.code =>	visit_I16X8_EXTEND_LOW_I8X16_S();
+			Opcode.I16X8_EXTEND_HIGH_I8X16_S.code =>visit_I16X8_EXTEND_HIGH_I8X16_S();
+			Opcode.I16X8_EXTEND_LOW_I8X16_U.code =>	visit_I16X8_EXTEND_LOW_I8X16_U();
+			Opcode.I16X8_EXTEND_HIGH_I8X16_U.code =>visit_I16X8_EXTEND_HIGH_I8X16_U();
+			Opcode.I16X8_SHL.code =>		visit_I16X8_SHL();
+			Opcode.I16X8_SHR_S.code =>		visit_I16X8_SHR_S();
+			Opcode.I16X8_SHR_U.code =>		visit_I16X8_SHR_U();
+			Opcode.I16X8_ADD.code =>		visit_I16X8_ADD();
+			Opcode.I16X8_ADD_SAT_S.code =>		visit_I16X8_ADD_SAT_S();
+			Opcode.I16X8_ADD_SAT_U.code =>		visit_I16X8_ADD_SAT_U();
+			Opcode.I16X8_SUB.code =>		visit_I16X8_SUB();
+			Opcode.I16X8_SUB_SAT_S.code =>		visit_I16X8_SUB_SAT_S();
+			Opcode.I16X8_SUB_SAT_U.code =>		visit_I16X8_SUB_SAT_U();
+			Opcode.I16X8_MUL.code =>		visit_I16X8_MUL();
+			Opcode.I16X8_MIN_S.code =>		visit_I16X8_MIN_S();
+			Opcode.I16X8_MIN_U.code =>		visit_I16X8_MIN_U();
+			Opcode.I16X8_MAX_S.code =>		visit_I16X8_MAX_S();
+			Opcode.I16X8_MAX_U.code =>		visit_I16X8_MAX_U();
+			Opcode.I16X8_AVGR_U.code =>		visit_I16X8_AVGR_U();
+			Opcode.I16X8_EXTMUL_LOW_I8X16_S.code =>	visit_I16X8_EXTMUL_LOW_I8X16_S();
+			Opcode.I16X8_EXTMUL_HIGH_I8X16_S.code =>visit_I16X8_EXTMUL_HIGH_I8X16_S();
+			Opcode.I16X8_EXTMUL_LOW_I8X16_U.code =>	visit_I16X8_EXTMUL_LOW_I8X16_U();
+			Opcode.I16X8_EXTMUL_HIGH_I8X16_U.code =>visit_I16X8_EXTMUL_HIGH_I8X16_U();
+			Opcode.I32X4_EXTADDPAIRWISE_I16X8_S.code =>	visit_I32X4_EXTADDPAIRWISE_I16X8_S();
+			Opcode.I32X4_EXTADDPAIRWISE_I16X8_U.code =>	visit_I32X4_EXTADDPAIRWISE_I16X8_U();
+			Opcode.I32X4_ABS.code =>		visit_I32X4_ABS();
+			Opcode.I32X4_NEG.code =>		visit_I32X4_NEG();
+			Opcode.I32X4_ALLTRUE.code =>		visit_I32X4_ALLTRUE();
+			Opcode.I32X4_BITMASK.code =>		visit_I32X4_BITMASK();
+			Opcode.I32X4_EXTEND_LOW_I16X8_S.code =>	visit_I32X4_EXTEND_LOW_I16X8_S();
+			Opcode.I32X4_EXTEND_HIGH_I16X8_S.code =>visit_I32X4_EXTEND_HIGH_I16X8_S();
+			Opcode.I32X4_EXTEND_LOW_I16X8_U.code =>	visit_I32X4_EXTEND_LOW_I16X8_U();
+			Opcode.I32X4_EXTEND_HIGH_I16X8_U.code =>visit_I32X4_EXTEND_HIGH_I16X8_U();
+			Opcode.I32X4_SHL.code =>		visit_I32X4_SHL();
+			Opcode.I32X4_SHR_S.code =>		visit_I32X4_SHR_S();
+			Opcode.I32X4_SHR_U.code =>		visit_I32X4_SHR_U();
+			Opcode.I32X4_ADD.code =>		visit_I32X4_ADD();
+			Opcode.I32X4_SUB.code =>		visit_I32X4_SUB();
+			Opcode.I32X4_MUL.code =>		visit_I32X4_MUL();
+			Opcode.I32X4_MIN_S.code =>		visit_I32X4_MIN_S();
+			Opcode.I32X4_MIN_U.code =>		visit_I32X4_MIN_U();
+			Opcode.I32X4_MAX_S.code =>		visit_I32X4_MAX_S();
+			Opcode.I32X4_MAX_U.code =>		visit_I32X4_MAX_U();
+			Opcode.I32X4_DOT_I16X8_S.code =>	visit_I32X4_DOT_I16X8_S();
+			Opcode.I32X4_EXTMUL_LOW_I16X8_S.code =>	visit_I32X4_EXTMUL_LOW_I16X8_S();
+			Opcode.I32X4_EXTMUL_HIGH_I16X8_S.code =>visit_I32X4_EXTMUL_HIGH_I16X8_S();
+			Opcode.I32X4_EXTMUL_LOW_I16X8_U.code =>	visit_I32X4_EXTMUL_LOW_I16X8_U();
+			Opcode.I32X4_EXTMUL_HIGH_I16X8_U.code =>visit_I32X4_EXTMUL_HIGH_I16X8_U();
+			Opcode.I64X2_ABS.code =>		visit_I64X2_ABS();
+			Opcode.I64X2_NEG.code =>		visit_I64X2_NEG();
+			Opcode.I64X2_ALLTRUE.code =>		visit_I64X2_ALLTRUE();
+			Opcode.I64X2_BITMASK.code =>		visit_I64X2_BITMASK();
+			Opcode.I64X2_EXTEND_LOW_I32X4_S.code =>	visit_I64X2_EXTEND_LOW_I32X4_S();
+			Opcode.I64X2_EXTEND_HIGH_I32X4_S.code =>visit_I64X2_EXTEND_HIGH_I32X4_S();
+			Opcode.I64X2_EXTEND_LOW_I32X4_U.code =>	visit_I64X2_EXTEND_LOW_I32X4_U();
+			Opcode.I64X2_EXTEND_HIGH_I32X4_U.code =>visit_I64X2_EXTEND_HIGH_I32X4_U();
+			Opcode.I64X2_SHL.code =>		visit_I64X2_SHL();
+			Opcode.I64X2_SHR_S.code =>		visit_I64X2_SHR_S();
+			Opcode.I64X2_SHR_U.code =>		visit_I64X2_SHR_U();
+			Opcode.I64X2_ADD.code =>		visit_I64X2_ADD();
+			Opcode.I64X2_SUB.code =>		visit_I64X2_SUB();
+			Opcode.I64X2_MUL.code =>		visit_I64X2_MUL();
+			Opcode.I64X2_EXTMUL_LOW_I32X4_S.code =>	visit_I64X2_EXTMUL_LOW_I32X4_S();
+			Opcode.I64X2_EXTMUL_HIGH_I32X4_S.code =>visit_I64X2_EXTMUL_HIGH_I32X4_S();
+			Opcode.I64X2_EXTMUL_LOW_I32X4_U.code =>	visit_I64X2_EXTMUL_LOW_I32X4_U();
+			Opcode.I64X2_EXTMUL_HIGH_I32X4_U.code =>visit_I64X2_EXTMUL_HIGH_I32X4_U();
+			Opcode.F32X4_CEIL.code =>		visit_F32X4_CEIL();
+			Opcode.F32X4_FLOOR.code =>		visit_F32X4_FLOOR();
+			Opcode.F32X4_TRUNC.code =>		visit_F32X4_TRUNC();
+			Opcode.F32X4_NEAREST.code =>		visit_F32X4_NEAREST();
+			Opcode.F32X4_ABS.code =>		visit_F32X4_ABS();
+			Opcode.F32X4_NEG.code =>		visit_F32X4_NEG();
+			Opcode.F32X4_SQRT.code =>		visit_F32X4_SQRT();
+			Opcode.F32X4_ADD.code =>		visit_F32X4_ADD();
+			Opcode.F32X4_SUB.code =>		visit_F32X4_SUB();
+			Opcode.F32X4_MUL.code =>		visit_F32X4_MUL();
+			Opcode.F32X4_DIV.code =>		visit_F32X4_DIV();
+			Opcode.F32X4_MIN.code =>		visit_F32X4_MIN();
+			Opcode.F32X4_MAX.code =>		visit_F32X4_MAX();
+			Opcode.F32X4_PMIN.code =>		visit_F32X4_PMIN();
+			Opcode.F32X4_PMAX.code =>		visit_F32X4_PMAX();
+			Opcode.F64X2_CEIL.code =>		visit_F64X2_CEIL();
+			Opcode.F64X2_FLOOR.code =>		visit_F64X2_FLOOR();
+			Opcode.F64X2_TRUNC.code =>		visit_F64X2_TRUNC();
+			Opcode.F64X2_NEAREST.code =>		visit_F64X2_NEAREST();
+			Opcode.F64X2_ABS.code =>		visit_F64X2_ABS();
+			Opcode.F64X2_NEG.code =>		visit_F64X2_NEG();
+			Opcode.F64X2_SQRT.code =>		visit_F64X2_SQRT();
+			Opcode.F64X2_ADD.code =>		visit_F64X2_ADD();
+			Opcode.F64X2_SUB.code =>		visit_F64X2_SUB();
+			Opcode.F64X2_MUL.code =>		visit_F64X2_MUL();
+			Opcode.F64X2_DIV.code =>		visit_F64X2_DIV();
+			Opcode.F64X2_MIN.code =>		visit_F64X2_MIN();
+			Opcode.F64X2_MAX.code =>		visit_F64X2_MAX();
+			Opcode.F64X2_PMIN.code =>		visit_F64X2_PMIN();
+			Opcode.F64X2_PMAX.code =>		visit_F64X2_PMAX();
+			Opcode.I32X4_TRUNC_SAT_F32X4_S.code =>	visit_I32X4_TRUNC_SAT_F32X4_S();
+			Opcode.I32X4_TRUNC_SAT_F32X4_U.code =>	visit_I32X4_TRUNC_SAT_F32X4_U();
+			Opcode.F32X4_CONVERT_I32X4_S.code =>	visit_F32X4_CONVERT_I32X4_S();
+			Opcode.F32X4_CONVERT_I32X4_U.code =>	visit_F32X4_CONVERT_I32X4_U();
+			Opcode.I32X4_TRUNC_SAT_F64X2_S_ZERO.code =>	visit_I32X4_TRUNC_SAT_F64X2_S_ZERO();
+			Opcode.I32X4_TRUNC_SAT_F64X2_U_ZERO.code =>	visit_I32X4_TRUNC_SAT_F64X2_U_ZERO();
+			Opcode.F64X2_CONVERT_LOW_I32X4_S.code =>visit_F64X2_CONVERT_LOW_I32X4_S();
+			Opcode.F64X2_CONVERT_LOW_I32X4_U.code =>visit_F64X2_CONVERT_LOW_I32X4_U();
+			Opcode.F32X4_DEMOTE_F64X2_ZERO.code =>	visit_F32X4_DEMOTE_F64X2_ZERO();
+			Opcode.F64X2_PROMOTE_LOW_F32X4.code =>	visit_F64X2_PROMOTE_LOW_F32X4();
+					u31.max => ;
+					_ => this.visit_INVALID(b, s);
+				}
+			}
+			// Prefixed opcodes: 0xFE
+			0xFE => {
+				var s = read_uleb31(); 
+				match (s) {
+			Opcode.MEMORY_ATOMIC_NOTIFY.code =>	visit_MEMORY_ATOMIC_NOTIFY_noimm();
+			Opcode.MEMORY_ATOMIC_WAIT32.code =>	visit_MEMORY_ATOMIC_WAIT32_noimm();
+			Opcode.MEMORY_ATOMIC_WAIT64.code =>	visit_MEMORY_ATOMIC_WAIT64_noimm();
+			Opcode.ATOMIC_FENCE.code =>		visit_ATOMIC_FENCE_noimm();
+			Opcode.I32_ATOMIC_LOAD.code =>		visit_I32_ATOMIC_LOAD_noimm();
+			Opcode.I64_ATOMIC_LOAD.code =>		visit_I64_ATOMIC_LOAD_noimm();
+			Opcode.I32_ATOMIC_LOAD8_U.code =>	visit_I32_ATOMIC_LOAD8_U_noimm();
+			Opcode.I32_ATOMIC_LOAD16_U.code =>	visit_I32_ATOMIC_LOAD16_U_noimm();
+			Opcode.I64_ATOMIC_LOAD8_U.code =>	visit_I64_ATOMIC_LOAD8_U_noimm();
+			Opcode.I64_ATOMIC_LOAD16_U.code =>	visit_I64_ATOMIC_LOAD16_U_noimm();
+			Opcode.I64_ATOMIC_LOAD32_U.code =>	visit_I64_ATOMIC_LOAD32_U_noimm();
+			Opcode.I32_ATOMIC_STORE.code =>		visit_I32_ATOMIC_STORE_noimm();
+			Opcode.I64_ATOMIC_STORE.code =>		visit_I64_ATOMIC_STORE_noimm();
+			Opcode.I32_ATOMIC_STORE8.code =>	visit_I32_ATOMIC_STORE8_noimm();
+			Opcode.I32_ATOMIC_STORE16.code =>	visit_I32_ATOMIC_STORE16_noimm();
+			Opcode.I64_ATOMIC_STORE8.code =>	visit_I64_ATOMIC_STORE8_noimm();
+			Opcode.I64_ATOMIC_STORE16.code =>	visit_I64_ATOMIC_STORE16_noimm();
+			Opcode.I64_ATOMIC_STORE32.code =>	visit_I64_ATOMIC_STORE32_noimm();
+			Opcode.I32_ATOMIC_RMW_ADD.code =>	visit_I32_ATOMIC_RMW_ADD_noimm();
+			Opcode.I64_ATOMIC_RMW_ADD.code =>	visit_I64_ATOMIC_RMW_ADD_noimm();
+			Opcode.I32_ATOMIC_RMW8_ADD_U.code =>	visit_I32_ATOMIC_RMW8_ADD_U_noimm();
+			Opcode.I32_ATOMIC_RMW16_ADD_U.code =>	visit_I32_ATOMIC_RMW16_ADD_U_noimm();
+			Opcode.I64_ATOMIC_RMW8_ADD_U.code =>	visit_I64_ATOMIC_RMW8_ADD_U_noimm();
+			Opcode.I64_ATOMIC_RMW16_ADD_U.code =>	visit_I64_ATOMIC_RMW16_ADD_U_noimm();
+			Opcode.I64_ATOMIC_RMW32_ADD_U.code =>	visit_I64_ATOMIC_RMW32_ADD_U_noimm();
+			Opcode.I32_ATOMIC_RMW_SUB.code =>	visit_I32_ATOMIC_RMW_SUB_noimm();
+			Opcode.I64_ATOMIC_RMW_SUB.code =>	visit_I64_ATOMIC_RMW_SUB_noimm();
+			Opcode.I32_ATOMIC_RMW8_SUB_U.code =>	visit_I32_ATOMIC_RMW8_SUB_U_noimm();
+			Opcode.I32_ATOMIC_RMW16_SUB_U.code =>	visit_I32_ATOMIC_RMW16_SUB_U_noimm();
+			Opcode.I64_ATOMIC_RMW8_SUB_U.code =>	visit_I64_ATOMIC_RMW8_SUB_U_noimm();
+			Opcode.I64_ATOMIC_RMW16_SUB_U.code =>	visit_I64_ATOMIC_RMW16_SUB_U_noimm();
+			Opcode.I64_ATOMIC_RMW32_SUB_U.code =>	visit_I64_ATOMIC_RMW32_SUB_U_noimm();
+			Opcode.I32_ATOMIC_RMW_AND.code =>	visit_I32_ATOMIC_RMW_AND_noimm();
+			Opcode.I64_ATOMIC_RMW_AND.code =>	visit_I64_ATOMIC_RMW_AND_noimm();
+			Opcode.I32_ATOMIC_RMW8_AND_U.code =>	visit_I32_ATOMIC_RMW8_AND_U_noimm();
+			Opcode.I32_ATOMIC_RMW16_AND_U.code =>	visit_I32_ATOMIC_RMW16_AND_U_noimm();
+			Opcode.I64_ATOMIC_RMW8_AND_U.code =>	visit_I64_ATOMIC_RMW8_AND_U_noimm();
+			Opcode.I64_ATOMIC_RMW16_AND_U.code =>	visit_I64_ATOMIC_RMW16_AND_U_noimm();
+			Opcode.I64_ATOMIC_RMW32_AND_U.code =>	visit_I64_ATOMIC_RMW32_AND_U_noimm();
+			Opcode.I32_ATOMIC_RMW_OR.code =>	visit_I32_ATOMIC_RMW_OR_noimm();
+			Opcode.I64_ATOMIC_RMW_OR.code =>	visit_I64_ATOMIC_RMW_OR_noimm();
+			Opcode.I32_ATOMIC_RMW8_OR_U.code =>	visit_I32_ATOMIC_RMW8_OR_U_noimm();
+			Opcode.I32_ATOMIC_RMW16_OR_U.code =>	visit_I32_ATOMIC_RMW16_OR_U_noimm();
+			Opcode.I64_ATOMIC_RMW8_OR_U.code =>	visit_I64_ATOMIC_RMW8_OR_U_noimm();
+			Opcode.I64_ATOMIC_RMW16_OR_U.code =>	visit_I64_ATOMIC_RMW16_OR_U_noimm();
+			Opcode.I64_ATOMIC_RMW32_OR_U.code =>	visit_I64_ATOMIC_RMW32_OR_U_noimm();
+			Opcode.I32_ATOMIC_RMW_XOR.code =>	visit_I32_ATOMIC_RMW_XOR_noimm();
+			Opcode.I64_ATOMIC_RMW_XOR.code =>	visit_I64_ATOMIC_RMW_XOR_noimm();
+			Opcode.I32_ATOMIC_RMW8_XOR_U.code =>	visit_I32_ATOMIC_RMW8_XOR_U_noimm();
+			Opcode.I32_ATOMIC_RMW16_XOR_U.code =>	visit_I32_ATOMIC_RMW16_XOR_U_noimm();
+			Opcode.I64_ATOMIC_RMW8_XOR_U.code =>	visit_I64_ATOMIC_RMW8_XOR_U_noimm();
+			Opcode.I64_ATOMIC_RMW16_XOR_U.code =>	visit_I64_ATOMIC_RMW16_XOR_U_noimm();
+			Opcode.I64_ATOMIC_RMW32_XOR_U.code =>	visit_I64_ATOMIC_RMW32_XOR_U_noimm();
+			Opcode.I32_ATOMIC_RMW_XCHG.code =>	visit_I32_ATOMIC_RMW_XCHG_noimm();
+			Opcode.I64_ATOMIC_RMW_XCHG.code =>	visit_I64_ATOMIC_RMW_XCHG_noimm();
+			Opcode.I32_ATOMIC_RMW8_XCHG_U.code =>	visit_I32_ATOMIC_RMW8_XCHG_U_noimm();
+			Opcode.I32_ATOMIC_RMW16_XCHG_U.code =>	visit_I32_ATOMIC_RMW16_XCHG_U_noimm();
+			Opcode.I64_ATOMIC_RMW8_XCHG_U.code =>	visit_I64_ATOMIC_RMW8_XCHG_U_noimm();
+			Opcode.I64_ATOMIC_RMW16_XCHG_U.code =>	visit_I64_ATOMIC_RMW16_XCHG_U_noimm();
+			Opcode.I64_ATOMIC_RMW32_XCHG_U.code =>	visit_I64_ATOMIC_RMW32_XCHG_U_noimm();
+			Opcode.I32_ATOMIC_RMW_CMPXCHG.code =>	visit_I32_ATOMIC_RMW_CMPXCHG_noimm();
+			Opcode.I64_ATOMIC_RMW_CMPXCHG.code =>	visit_I64_ATOMIC_RMW_CMPXCHG_noimm();
+			Opcode.I32_ATOMIC_RMW8_CMPXCHG_U.code =>	visit_I32_ATOMIC_RMW8_CMPXCHG_U_noimm();
+			Opcode.I32_ATOMIC_RMW16_CMPXCHG_U.code =>	visit_I32_ATOMIC_RMW16_CMPXCHG_U_noimm();
+			Opcode.I64_ATOMIC_RMW8_CMPXCHG_U.code =>	visit_I64_ATOMIC_RMW8_CMPXCHG_U_noimm();
+			Opcode.I64_ATOMIC_RMW16_CMPXCHG_U.code =>	visit_I64_ATOMIC_RMW16_CMPXCHG_U_noimm();
+			Opcode.I64_ATOMIC_RMW32_CMPXCHG_U.code =>	visit_I64_ATOMIC_RMW32_CMPXCHG_U_noimm();
+					u31.max => ;
+					_ => this.visit_INVALID(b, s);
+				}
+			}
+			_ => this.visit_INVALID(0, b);
+		}
+	}
+
+	// This method is called upon each group of local declarations.
+	// Override it to visit all local declarations.
+	def visitLocalDecl(count: u32, vtc: ValueTypeCode) {}
+
+	// Called on invalid instructions, including user error by iterating off the end.
+	def visit_INVALID		(prefix: byte, code: u32)			{}
+	
+	// Called on the {crash} internal instruction.
+	def visit_CRASH_EXEC		()						{}
+	def visit_CRASH_COMPILER	()						{}
+
+	// If probes exist in the code, this method will be called before the visit method for the instruction.
+	// Override this method to handle a probe inserted before an instruction.
+	def visitProbe			()						{}
+	
+	// Visit methods for each opcode.
+	// Override these methods to handle a single instruction.
+	// XXX: generate visit_OP() methods automatically from the Opcodes definition.
+	def visit_UNREACHABLE		() 						{}
+	def visit_NOP			() 						{}
+	def visit_BLOCK_noimm		()						{ visit_BLOCK(read_BlockTypeCode()); }
+	def visit_BLOCK			(btc: BlockTypeCode) 				{}
+	def visit_LOOP_noimm		()						{ visit_LOOP(read_BlockTypeCode()); }
+	def visit_LOOP			(btc: BlockTypeCode)			 	{}
+	def visit_IF_noimm		()						{ visit_IF(read_BlockTypeCode()); }
+	def visit_IF			(btc: BlockTypeCode) 				{}
+	def visit_ELSE			() 						{}
+	def visit_TRY_noimm		()						{ visit_TRY(read_BlockTypeCode()); }
+	def visit_TRY			(btc: BlockTypeCode) 				{}
+	def visit_CATCH_noimm		()						{ visit_CATCH(read_uleb31()); }
+	def visit_CATCH			(tag_code: u31) 				{}
+	def visit_THROW_noimm		()						{ visit_THROW(read_uleb31()); }
+	def visit_THROW			(tag_code: u31) 				{}
+	def visit_RETHROW_noimm		()						{ visit_RETHROW(read_uleb31()); }
+	def visit_RETHROW		(depth: u31) 					{}
+	def visit_THROW_REF		() 						{}
+	def visit_END			() 						{}
+	def visit_BR_noimm		()						{ visit_BR(read_uleb31()); }
+	def visit_BR			(depth: u31) 					{}
+	def visit_BR_IF_noimm		()						{ visit_BR_IF(read_uleb31()); }
+	def visit_BR_IF			(depth: u31) 					{}
+	def visit_BR_TABLE_noimm	()						{ visit_BR_TABLE(read_Labels()); }
+	def visit_BR_TABLE		(labels: Range<u31>)			 	{}
+	def visit_RETURN		() 						{}
+	def visit_CALL_noimm		()						{ visit_CALL(read_uleb31()); }
+	def visit_CALL			(func_index: u31) 				{}
+	def visit_CALL_INDIRECT_noimm	()						{ visit_CALL_INDIRECT(read_uleb31(), read_uleb31()); }
+	def visit_CALL_INDIRECT		(sig_index: u31, table_index: u31) 		{}
+	def visit_RETURN_CALL_noimm	()						{ visit_RETURN_CALL(read_uleb31()); }
+	def visit_RETURN_CALL		(func_index: u31) 				{}
+	def visit_RETURN_CALL_INDIRECT_noimm	()					{ visit_RETURN_CALL_INDIRECT(read_uleb31(), read_uleb31()); }
+	def visit_RETURN_CALL_INDIRECT	(sig_index: u31, table_index: u31)		{}
+	def visit_CALL_REF_noimm	()						{ visit_CALL_REF(read_uleb31()); }
+	def visit_CALL_REF		(sig_index: u31) 				{}
+	def visit_RETURN_CALL_REF_noimm	()						{ visit_RETURN_CALL_REF(read_uleb31()); }
+	def visit_RETURN_CALL_REF	(sig_index: u31) 				{}
+	def visit_DELEGATE_noimm	()						{ visit_DELEGATE(read_uleb31()); }
+	def visit_DELEGATE		(depth: u31) 					{}
+	def visit_CATCH_ALL		() 						{}
+	def visit_DROP			() 						{}
+	def visit_SELECT		() 						{}
+	def visit_SELECT_T_noimm	()						{ visit_SELECT_T(read_ValueTypeCodes()); }
+	def visit_SELECT_T		(val_types: Range<ValueTypeCode>) 		{}
+	def visit_TRY_TABLE_noimm	()						{ visit_TRY_TABLE(read_BlockTypeCode(), read_CatchCodes()); }
+	def visit_TRY_TABLE		(btc: BlockTypeCode, catches: Range<BpCatchCode>) {}
+	// Locals.
+	def visit_LOCAL_GET_noimm	()						{ visit_LOCAL_GET(read_uleb31()); }
+	def visit_LOCAL_GET		(local_index: u31) {}
+	def visit_LOCAL_SET_noimm	()						{ visit_LOCAL_SET(read_uleb31()); }
+	def visit_LOCAL_SET		(local_index: u31) {}
+	def visit_LOCAL_TEE_noimm	()						{ visit_LOCAL_TEE(read_uleb31()); }
+	def visit_LOCAL_TEE		(local_index: u31) {}
+	// Globals.
+	def visit_GLOBAL_GET_noimm	()						{ visit_GLOBAL_GET(read_uleb31()); }
+	def visit_GLOBAL_GET		(global_index: u31) {}
+	def visit_GLOBAL_SET_noimm	()						{ visit_GLOBAL_SET(read_uleb31()); }
+	def visit_GLOBAL_SET		(global_index: u31) {}
+	// Table elems.
+	def visit_TABLE_GET_noimm	()						{ visit_TABLE_GET(read_uleb31()); }
+	def visit_TABLE_GET		(table_index: u31) {}
+	def visit_TABLE_SET_noimm	()						{ visit_TABLE_SET(read_uleb31()); }
+	def visit_TABLE_SET		(table_index: u31) {}
+	// Loads and stores.
+	def visit_I32_LOAD_noimm	()						{ visit_I32_LOAD(read_MemArg()); }
+	def visit_I32_LOAD		(imm: MemArg) {}
+	def visit_I64_LOAD_noimm	()						{ visit_I64_LOAD(read_MemArg()); }
+	def visit_I64_LOAD		(imm: MemArg) {}
+	def visit_F32_LOAD_noimm	()						{ visit_F32_LOAD(read_MemArg()); }
+	def visit_F32_LOAD		(imm: MemArg) {}
+	def visit_F64_LOAD_noimm	()						{ visit_F64_LOAD(read_MemArg()); }
+	def visit_F64_LOAD		(imm: MemArg) {}
+	def visit_I32_LOAD8_S_noimm	()						{ visit_I32_LOAD8_S(read_MemArg()); }
+	def visit_I32_LOAD8_S		(imm: MemArg) {}
+	def visit_I32_LOAD8_U_noimm	()						{ visit_I32_LOAD8_U(read_MemArg()); }
+	def visit_I32_LOAD8_U		(imm: MemArg) {}
+	def visit_I32_LOAD16_S_noimm	()						{ visit_I32_LOAD16_S(read_MemArg()); }
+	def visit_I32_LOAD16_S		(imm: MemArg) {}
+	def visit_I32_LOAD16_U_noimm	()						{ visit_I32_LOAD16_U(read_MemArg()); }
+	def visit_I32_LOAD16_U		(imm: MemArg) {}
+	def visit_I64_LOAD8_S_noimm	()						{ visit_I64_LOAD8_S(read_MemArg()); }
+	def visit_I64_LOAD8_S		(imm: MemArg) {}
+	def visit_I64_LOAD8_U_noimm	()						{ visit_I64_LOAD8_U(read_MemArg()); }
+	def visit_I64_LOAD8_U		(imm: MemArg) {}
+	def visit_I64_LOAD16_S_noimm	()						{ visit_I64_LOAD16_S(read_MemArg()); }
+	def visit_I64_LOAD16_S		(imm: MemArg) {}
+	def visit_I64_LOAD16_U_noimm	()						{ visit_I64_LOAD16_U(read_MemArg()); }
+	def visit_I64_LOAD16_U		(imm: MemArg) {}
+	def visit_I64_LOAD32_S_noimm	()						{ visit_I64_LOAD32_S(read_MemArg()); }
+	def visit_I64_LOAD32_S		(imm: MemArg) {}
+	def visit_I64_LOAD32_U_noimm	()						{ visit_I64_LOAD32_U(read_MemArg()); }
+	def visit_I64_LOAD32_U		(imm: MemArg) {}
+	def visit_I32_STORE_noimm	()						{ visit_I32_STORE(read_MemArg()); }
+	def visit_I32_STORE		(imm: MemArg) {}
+	def visit_I64_STORE_noimm	()						{ visit_I64_STORE(read_MemArg()); }
+	def visit_I64_STORE		(imm: MemArg) {}
+	def visit_F32_STORE_noimm	()						{ visit_F32_STORE(read_MemArg()); }
+	def visit_F32_STORE		(imm: MemArg) {}
+	def visit_F64_STORE_noimm	()						{ visit_F64_STORE(read_MemArg()); }
+	def visit_F64_STORE		(imm: MemArg) {}
+	def visit_I32_STORE8_noimm	()						{ visit_I32_STORE8(read_MemArg()); }
+	def visit_I32_STORE8		(imm: MemArg) {}
+	def visit_I32_STORE16_noimm	()						{ visit_I32_STORE16(read_MemArg()); }
+	def visit_I32_STORE16		(imm: MemArg) {}
+	def visit_I64_STORE8_noimm	()						{ visit_I64_STORE8(read_MemArg()); }
+	def visit_I64_STORE8		(imm: MemArg) {}
+	def visit_I64_STORE16_noimm	()						{ visit_I64_STORE16(read_MemArg()); }
+	def visit_I64_STORE16		(imm: MemArg) {}
+	def visit_I64_STORE32_noimm	()						{ visit_I64_STORE32(read_MemArg()); }
+	def visit_I64_STORE32		(imm: MemArg) {}
+	// Misc memory.
+	def visit_MEMORY_SIZE_noimm	()						{ visit_MEMORY_SIZE(read_uleb31()); }
+	def visit_MEMORY_SIZE		(memory_index: u31) {}
+	def visit_MEMORY_GROW_noimm	()						{ visit_MEMORY_GROW(read_uleb31()); }
+	def visit_MEMORY_GROW		(memory_index: u31) {}
+	// Constants.
+	def visit_I32_CONST_noimm	()						{ visit_I32_CONST(read_sleb32()); }
+	def visit_I32_CONST		(val: i32) {}
+	def visit_I64_CONST_noimm	()						{ visit_I64_CONST(read_sleb64()); }
+	def visit_I64_CONST		(val: i64) {}
+	def visit_F32_CONST_noimm	()						{ visit_F32_CONST(read_u32()); }
+	def visit_F32_CONST		(bits: u32) {}
+	def visit_F64_CONST_noimm	()						{ visit_F64_CONST(read_u64()); }
+	def visit_F64_CONST		(bits: u64) {}
+	// Comparisons.
+	def visit_I32_EQZ		() {}
+	def visit_I32_EQ		() {}
+	def visit_I32_NE		() {}
+	def visit_I32_LT_S		() {}
+	def visit_I32_LT_U		() {}
+	def visit_I32_GT_S		() {}
+	def visit_I32_GT_U		() {}
+	def visit_I32_LE_S		() {}
+	def visit_I32_LE_U		() {}
+	def visit_I32_GE_S		() {}
+	def visit_I32_GE_U		() {}
+	def visit_I64_EQZ		() {}
+	def visit_I64_EQ		() {}
+	def visit_I64_NE		() {}
+	def visit_I64_LT_S		() {}
+	def visit_I64_LT_U		() {}
+	def visit_I64_GT_S		() {}
+	def visit_I64_GT_U		() {}
+	def visit_I64_LE_S		() {}
+	def visit_I64_LE_U		() {}
+	def visit_I64_GE_S		() {}
+	def visit_I64_GE_U		() {}
+	def visit_F32_EQ		() {}
+	def visit_F32_NE		() {}
+	def visit_F32_LT		() {}
+	def visit_F32_GT		() {}
+	def visit_F32_LE		() {}
+	def visit_F32_GE		() {}
+	def visit_F64_EQ		() {}
+	def visit_F64_NE		() {}
+	def visit_F64_LT		() {}
+	def visit_F64_GT		() {}
+	def visit_F64_LE		() {}
+	def visit_F64_GE		() {}
+	// I32 arithmetic.
+	def visit_I32_CLZ		() {}
+	def visit_I32_CTZ		() {}
+	def visit_I32_POPCNT		() {}
+	def visit_I32_ADD		() {}
+	def visit_I32_SUB		() {}
+	def visit_I32_MUL		() {}
+	def visit_I32_DIV_S		() {}
+	def visit_I32_DIV_U		() {}
+	def visit_I32_REM_S		() {}
+	def visit_I32_REM_U		() {}
+	def visit_I32_AND		() {}
+	def visit_I32_OR		() {}
+	def visit_I32_XOR		() {}
+	def visit_I32_SHL		() {}
+	def visit_I32_SHR_S		() {}
+	def visit_I32_SHR_U		() {}
+	def visit_I32_ROTL		() {}
+	def visit_I32_ROTR		() {}
+	// I64 arithmetic.
+	def visit_I64_CLZ		() {}
+	def visit_I64_CTZ		() {}
+	def visit_I64_POPCNT		() {}
+	def visit_I64_ADD		() {}
+	def visit_I64_SUB		() {}
+	def visit_I64_MUL		() {}
+	def visit_I64_DIV_S		() {}
+	def visit_I64_DIV_U		() {}
+	def visit_I64_REM_S		() {}
+	def visit_I64_REM_U		() {}
+	def visit_I64_AND		() {}
+	def visit_I64_OR		() {}
+	def visit_I64_XOR		() {}
+	def visit_I64_SHL		() {}
+	def visit_I64_SHR_S		() {}
+	def visit_I64_SHR_U		() {}
+	def visit_I64_ROTL		() {}
+	def visit_I64_ROTR		() {}
+	// F32 arithmetic.
+	def visit_F32_ABS		() {}
+	def visit_F32_NEG		() {}
+	def visit_F32_CEIL		() {}
+	def visit_F32_FLOOR		() {}
+	def visit_F32_TRUNC		() {}
+	def visit_F32_NEAREST		() {}
+	def visit_F32_SQRT		() {}
+	def visit_F32_ADD		() {}
+	def visit_F32_SUB		() {}
+	def visit_F32_MUL		() {}
+	def visit_F32_DIV		() {}
+	def visit_F32_MIN		() {}
+	def visit_F32_MAX		() {}
+	def visit_F32_COPYSIGN		() {}
+	// F64 arithmetic.
+	def visit_F64_ABS		() {}
+	def visit_F64_NEG		() {}
+	def visit_F64_CEIL		() {}
+	def visit_F64_FLOOR		() {}
+	def visit_F64_TRUNC		() {}
+	def visit_F64_NEAREST		() {}
+	def visit_F64_SQRT		() {}
+	def visit_F64_ADD		() {}
+	def visit_F64_SUB		() {}
+	def visit_F64_MUL		() {}
+	def visit_F64_DIV		() {}
+	def visit_F64_MIN		() {}
+	def visit_F64_MAX		() {}
+	def visit_F64_COPYSIGN		() {}
+	// Conversions and casts.
+	def visit_I32_WRAP_I64		() {}
+	def visit_I32_TRUNC_F32_S	() {}
+	def visit_I32_TRUNC_F32_U	() {}
+	def visit_I32_TRUNC_F64_S	() {}
+	def visit_I32_TRUNC_F64_U	() {}
+	def visit_I64_EXTEND_I32_S	() {}
+	def visit_I64_EXTEND_I32_U	() {}
+	def visit_I64_TRUNC_F32_S	() {}
+	def visit_I64_TRUNC_F32_U	() {}
+	def visit_I64_TRUNC_F64_S	() {}
+	def visit_I64_TRUNC_F64_U	() {}
+	def visit_F32_CONVERT_I32_S	() {}
+	def visit_F32_CONVERT_I32_U	() {}
+	def visit_F32_CONVERT_I64_S	() {}
+	def visit_F32_CONVERT_I64_U	() {}
+	def visit_F32_DEMOTE_F64	() {}
+	def visit_F64_CONVERT_I32_S	() {}
+	def visit_F64_CONVERT_I32_U	() {}
+	def visit_F64_CONVERT_I64_S	() {}
+	def visit_F64_CONVERT_I64_U	() {}
+	def visit_F64_PROMOTE_F32	() {}
+	def visit_I32_REINTERPRET_F32	() {}
+	def visit_I64_REINTERPRET_F64	() {}
+	def visit_F32_REINTERPRET_I32	() {}
+	def visit_F64_REINTERPRET_I64	() {}
+	// Sign extensions.
+	def visit_I32_EXTEND8_S		() {}
+	def visit_I32_EXTEND16_S	() {}
+	def visit_I64_EXTEND8_S		() {}
+	def visit_I64_EXTEND16_S	() {}
+	def visit_I64_EXTEND32_S	() {}
+	// Reference instructions.
+	def visit_REF_NULL_noimm	()						{ visit_REF_NULL(read_uleb31()); }
+	def visit_REF_NULL		(ht_index: u31)		{}
+	def visit_REF_IS_NULL		()			{}
+	def visit_REF_FUNC_noimm	()						{ visit_REF_FUNC(read_uleb31()); }
+	def visit_REF_FUNC		(func_index: u31)	{}
+	def visit_REF_AS_NON_NULL	() 			{}
+	def visit_BR_ON_NULL_noimm	()						{ visit_BR_ON_NULL(read_uleb31()); }
+	def visit_BR_ON_NULL		(label: u31) 		{}
+	def visit_REF_EQ		() 			{}
+	def visit_BR_ON_NON_NULL_noimm	()						{ visit_BR_ON_NON_NULL(read_uleb31()); }
+	def visit_BR_ON_NON_NULL	(label: u31) 		{}
+	// FB prefix: gc proposal opcodes.
+	def visit_STRUCT_NEW_noimm	()						{ visit_STRUCT_NEW(read_uleb31()); }
+	def visit_STRUCT_NEW		(ht_index: u31) 			{}
+	def visit_STRUCT_NEW_DEFAULT_noimm	()					{ visit_STRUCT_NEW_DEFAULT(read_uleb31()); }
+	def visit_STRUCT_NEW_DEFAULT	(ht_index: u31) 			{}
+	def visit_STRUCT_GET_noimm	()						{ visit_STRUCT_GET(read_uleb31(), read_uleb31()); }
+	def visit_STRUCT_GET		(ht_index: u31, field_index: u31) 	{}
+	def visit_STRUCT_GET_S_noimm	()						{ visit_STRUCT_GET_S(read_uleb31(), read_uleb31()); }
+	def visit_STRUCT_GET_S		(ht_index: u31, field_index: u31) 	{}
+	def visit_STRUCT_GET_U_noimm	()						{ visit_STRUCT_GET_U(read_uleb31(), read_uleb31()); }
+	def visit_STRUCT_GET_U		(ht_index: u31, field_index: u31) 	{}
+	def visit_STRUCT_SET_noimm	()						{ visit_STRUCT_SET(read_uleb31(), read_uleb31()); }
+	def visit_STRUCT_SET		(ht_index: u31, field_index: u31) 	{}
+	def visit_ARRAY_FILL_noimm	()						{ visit_ARRAY_FILL(read_uleb31()); }
+	def visit_ARRAY_FILL		(ht_index: u31)		{}
+	def visit_ARRAY_NEW_noimm	()						{ visit_ARRAY_NEW(read_uleb31()); }
+	def visit_ARRAY_NEW		(ht_index: u31) 			{}
+	def visit_ARRAY_NEW_DEFAULT_noimm	()					{ visit_ARRAY_NEW_DEFAULT(read_uleb31()); }
+	def visit_ARRAY_NEW_DEFAULT	(ht_index: u31) 			{}
+	def visit_ARRAY_GET_noimm	()						{ visit_ARRAY_GET(read_uleb31()); }
+	def visit_ARRAY_GET		(ht_index: u31) 			{}
+	def visit_ARRAY_GET_S_noimm	()						{ visit_ARRAY_GET_S(read_uleb31()); }
+	def visit_ARRAY_GET_S		(ht_index: u31) 			{}
+	def visit_ARRAY_GET_U_noimm	()						{ visit_ARRAY_GET_U(read_uleb31()); }
+	def visit_ARRAY_GET_U		(ht_index: u31) 			{}
+	def visit_ARRAY_SET_noimm	()						{ visit_ARRAY_SET(read_uleb31()); }
+	def visit_ARRAY_SET		(ht_index: u31) 			{}
+	def visit_ARRAY_LEN		() 					{}
+	def visit_ARRAY_COPY_noimm	()						{ visit_ARRAY_COPY(read_uleb31(), read_uleb31()); }
+	def visit_ARRAY_COPY		(ht_index1: u31, ht_index2: u31)	{}
+	def visit_ARRAY_NEW_FIXED_noimm	()						{ visit_ARRAY_NEW_FIXED(read_uleb31(), read_uleb31()); }
+	def visit_ARRAY_NEW_FIXED	(ht_index: u31, length: u31)		{}
+	def visit_ARRAY_NEW_DATA_noimm	()						{ visit_ARRAY_NEW_DATA(read_uleb31(), read_uleb31()); }
+	def visit_ARRAY_NEW_DATA	(ht_index: u31, data_index: u31)	{}
+	def visit_ARRAY_NEW_ELEM_noimm	()						{ visit_ARRAY_NEW_ELEM(read_uleb31(), read_uleb31()); }
+	def visit_ARRAY_NEW_ELEM	(ht_index: u31, elem_index: u31)	{}
+	def visit_I31_NEW		()					{}
+	def visit_I31_GET_S		()					{}
+	def visit_I31_GET_U		() 					{}
+	def visit_REF_TEST_noimm	()						{ visit_REF_TEST(read_uleb31()); }
+	def visit_REF_TEST		(ht_index: u31)				{}
+	def visit_REF_CAST_noimm	()						{ visit_REF_CAST(read_uleb31()); }
+	def visit_REF_CAST		(ht_index: u31)				{}
+	def visit_BR_ON_CAST_noimm	()						{ visit_BR_ON_CAST(read_BrOnCastImm()); }
+	def visit_BR_ON_CAST		(imm: BrOnCastImm)			{}
+	def visit_BR_ON_CAST_FAIL_noimm	()						{ visit_BR_ON_CAST_FAIL(read_BrOnCastImm()); }
+	def visit_BR_ON_CAST_FAIL	(imm: BrOnCastImm)			{}
+	def visit_REF_TEST_NULL_noimm	()						{ visit_REF_TEST_NULL(read_uleb31()); }
+	def visit_REF_TEST_NULL		(ht_index: u31)				{}
+	def visit_REF_CAST_NULL_noimm	()						{ visit_REF_CAST_NULL(read_uleb31()); }
+	def visit_REF_CAST_NULL		(ht_index: u31)				{}
+	def visit_ARRAY_INIT_DATA_noimm	()						{ visit_ARRAY_INIT_DATA(read_uleb31(), read_uleb31()); }
+	def visit_ARRAY_INIT_DATA	(ht_index: u31, data_index: u31)	{}
+	def visit_ARRAY_INIT_ELEM_noimm	()						{ visit_ARRAY_INIT_ELEM(read_uleb31(), read_uleb31()); }
+	def visit_ARRAY_INIT_ELEM	(ht_index: u31, elem_index: u31)	{}
+	def visit_EXTERN_INTERNALIZE	() 					{}
+	def visit_EXTERN_EXTERNALIZE	() 					{}
+	// FC prefix: saturating truncations.
+	def visit_I32_TRUNC_SAT_F32_S	() {}
+	def visit_I32_TRUNC_SAT_F32_U	() {}
+	def visit_I32_TRUNC_SAT_F64_S	() {}
+	def visit_I32_TRUNC_SAT_F64_U	() {}
+	def visit_I64_TRUNC_SAT_F32_S	() {}
+	def visit_I64_TRUNC_SAT_F32_U	() {}
+	def visit_I64_TRUNC_SAT_F64_S	() {}
+	def visit_I64_TRUNC_SAT_F64_U	() {}
+	// FC prefix: bulk-memory and references.
+	def visit_MEMORY_INIT_noimm	()						{ visit_MEMORY_INIT(read_uleb31(), read_uleb31()); }
+	def visit_MEMORY_INIT		(data_index: u31, memory_index: u31) {}
+	def visit_DATA_DROP_noimm	()						{ visit_DATA_DROP(read_uleb31()); }
+	def visit_DATA_DROP		(data_index: u31) 		{}
+	def visit_MEMORY_COPY_noimm	()						{ visit_MEMORY_COPY(read_uleb31(), read_uleb31()); }
+	def visit_MEMORY_COPY		(dst_memory_index: u31, src_memory_index: u31) {}
+	def visit_MEMORY_FILL_noimm	()						{ visit_MEMORY_FILL(read_uleb31()); }
+	def visit_MEMORY_FILL		(memory_index: u31)		{}
+	def visit_TABLE_INIT_noimm	()						{ visit_TABLE_INIT(read_uleb31(), read_uleb31()); }
+	def visit_TABLE_INIT		(elem_index: u31, table_index: u31) {}
+	def visit_ELEM_DROP_noimm	()						{ visit_ELEM_DROP(read_uleb31()); }
+	def visit_ELEM_DROP		(elem_index: u31) 		{}
+	def visit_TABLE_COPY_noimm	()						{ visit_TABLE_COPY(read_uleb31(), read_uleb31()); }
+	def visit_TABLE_COPY		(dst_table_index: u31, src_table_index: u31)	{}
+	def visit_TABLE_GROW_noimm	()						{ visit_TABLE_GROW(read_uleb31()); }
+	def visit_TABLE_GROW		(table_index: u31)		{}
+	def visit_TABLE_SIZE_noimm	()						{ visit_TABLE_SIZE(read_uleb31()); }
+	def visit_TABLE_SIZE		(table_index: u31)		{}
+	def visit_TABLE_FILL_noimm	()						{ visit_TABLE_FILL(read_uleb31()); }
+	def visit_TABLE_FILL		(table_index: u31)		{}
+	// FD prefix: vector instructions.
+	def visit_V128_LOAD_noimm	()							{ visit_V128_LOAD(read_MemArg()); }
+	def visit_V128_LOAD			(imm: MemArg) {}
+	def visit_V128_LOAD_8X8_S_noimm	()							{ visit_V128_LOAD_8X8_S(read_MemArg()); }
+	def visit_V128_LOAD_8X8_S		(imm: MemArg) {}
+	def visit_V128_LOAD_8X8_U_noimm	()							{ visit_V128_LOAD_8X8_U(read_MemArg()); }
+	def visit_V128_LOAD_8X8_U		(imm: MemArg) {}
+	def visit_V128_LOAD_16X4_S_noimm	()						{ visit_V128_LOAD_16X4_S(read_MemArg()); }
+	def visit_V128_LOAD_16X4_S		(imm: MemArg) {}
+	def visit_V128_LOAD_16X4_U_noimm	()						{ visit_V128_LOAD_16X4_U(read_MemArg()); }
+	def visit_V128_LOAD_16X4_U		(imm: MemArg) {}
+	def visit_V128_LOAD_32X2_S_noimm	()						{ visit_V128_LOAD_32X2_S(read_MemArg()); }
+	def visit_V128_LOAD_32X2_S		(imm: MemArg) {}
+	def visit_V128_LOAD_32X2_U_noimm	()						{ visit_V128_LOAD_32X2_U(read_MemArg()); }
+	def visit_V128_LOAD_32X2_U		(imm: MemArg) {}
+	def visit_V128_LOAD_8_SPLAT_noimm	()						{ visit_V128_LOAD_8_SPLAT(read_MemArg()); }
+	def visit_V128_LOAD_8_SPLAT		(imm: MemArg) {}
+	def visit_V128_LOAD_16_SPLAT_noimm	()						{ visit_V128_LOAD_16_SPLAT(read_MemArg()); }
+	def visit_V128_LOAD_16_SPLAT		(imm: MemArg) {}
+	def visit_V128_LOAD_32_SPLAT_noimm	()						{ visit_V128_LOAD_32_SPLAT(read_MemArg()); }
+	def visit_V128_LOAD_32_SPLAT		(imm: MemArg) {}
+	def visit_V128_LOAD_64_SPLAT_noimm	()						{ visit_V128_LOAD_64_SPLAT(read_MemArg()); }
+	def visit_V128_LOAD_64_SPLAT		(imm: MemArg) {}
+	def visit_V128_LOAD_32_ZERO_noimm	()						{ visit_V128_LOAD_32_ZERO(read_MemArg()); }
+	def visit_V128_LOAD_32_ZERO		(imm: MemArg) {}
+	def visit_V128_LOAD_64_ZERO_noimm	()						{ visit_V128_LOAD_64_ZERO(read_MemArg()); }
+	def visit_V128_LOAD_64_ZERO		(imm: MemArg) {}
+	def visit_V128_STORE_noimm	()							{ visit_V128_STORE(read_MemArg()); }
+	def visit_V128_STORE			(imm: MemArg) {}
+	def visit_V128_LOAD_8_LANE_noimm	()						{ visit_V128_LOAD_8_LANE(read_MemArg(), read_u8()); }
+	def visit_V128_LOAD_8_LANE		(imm: MemArg, lane_index: u8) {}
+	def visit_V128_LOAD_16_LANE_noimm	()						{ visit_V128_LOAD_16_LANE(read_MemArg(), read_u8()); }
+	def visit_V128_LOAD_16_LANE		(imm: MemArg, lane_index: u8) {}
+	def visit_V128_LOAD_32_LANE_noimm	()						{ visit_V128_LOAD_32_LANE(read_MemArg(), read_u8()); }
+	def visit_V128_LOAD_32_LANE		(imm: MemArg, lane_index: u8) {}
+	def visit_V128_LOAD_64_LANE_noimm	()						{ visit_V128_LOAD_64_LANE(read_MemArg(), read_u8()); }
+	def visit_V128_LOAD_64_LANE		(imm: MemArg, lane_index: u8) {}
+	def visit_V128_STORE_8_LANE_noimm	()						{ visit_V128_STORE_8_LANE(read_MemArg(), read_u8()); }
+	def visit_V128_STORE_8_LANE		(imm: MemArg, lane_index: u8) {}
+	def visit_V128_STORE_16_LANE_noimm	()						{ visit_V128_STORE_16_LANE(read_MemArg(), read_u8()); }
+	def visit_V128_STORE_16_LANE		(imm: MemArg, lane_index: u8) {}
+	def visit_V128_STORE_32_LANE_noimm	()						{ visit_V128_STORE_32_LANE(read_MemArg(), read_u8()); }
+	def visit_V128_STORE_32_LANE		(imm: MemArg, lane_index: u8) {}
+	def visit_V128_STORE_64_LANE_noimm	()						{ visit_V128_STORE_64_LANE(read_MemArg(), read_u8()); }
+	def visit_V128_STORE_64_LANE		(imm: MemArg, lane_index: u8) {}
+	def visit_V128_CONST_noimm	()							{ visit_V128_CONST(read_u64(), read_u64()); }
+	def visit_V128_CONST			(low: u64, high: u64) {}
+	def visit_I8X16_SHUFFLE_noimm	()							{ visit_I8X16_SHUFFLE(read_u8x16()); }
+	def visit_I8X16_SHUFFLE			(lane_indexes: Range<u8>) {}
+	def visit_I8X16_EXTRACTLANE_S_noimm	()						{ visit_I8X16_EXTRACTLANE_S(read_u8()); }
+	def visit_I8X16_EXTRACTLANE_S		(lane_index: u8) {}
+	def visit_I8X16_EXTRACTLANE_U_noimm	()						{ visit_I8X16_EXTRACTLANE_U(read_u8()); }
+	def visit_I8X16_EXTRACTLANE_U		(lane_index: u8) {}
+	def visit_I8X16_REPLACELANE_noimm	()						{ visit_I8X16_REPLACELANE(read_u8()); }
+	def visit_I8X16_REPLACELANE		(lane_index: u8) {}
+	def visit_I16X8_EXTRACTLANE_S_noimm	()						{ visit_I16X8_EXTRACTLANE_S(read_u8()); }
+	def visit_I16X8_EXTRACTLANE_S		(lane_index: u8) {}
+	def visit_I16X8_EXTRACTLANE_U_noimm	()						{ visit_I16X8_EXTRACTLANE_U(read_u8()); }
+	def visit_I16X8_EXTRACTLANE_U		(lane_index: u8) {}
+	def visit_I16X8_REPLACELANE_noimm	()						{ visit_I16X8_REPLACELANE(read_u8()); }
+	def visit_I16X8_REPLACELANE		(lane_index: u8) {}
+	def visit_I32X4_EXTRACTLANE_noimm	()						{ visit_I32X4_EXTRACTLANE(read_u8()); }
+	def visit_I32X4_EXTRACTLANE		(lane_index: u8) {}
+	def visit_I32X4_REPLACELANE_noimm	()						{ visit_I32X4_REPLACELANE(read_u8()); }
+	def visit_I32X4_REPLACELANE		(lane_index: u8) {}
+	def visit_I64X2_EXTRACTLANE_noimm	()						{ visit_I64X2_EXTRACTLANE(read_u8()); }
+	def visit_I64X2_EXTRACTLANE		(lane_index: u8) {}
+	def visit_I64X2_REPLACELANE_noimm	()						{ visit_I64X2_REPLACELANE(read_u8()); }
+	def visit_I64X2_REPLACELANE		(lane_index: u8) {}
+	def visit_F32X4_EXTRACTLANE_noimm	()						{ visit_F32X4_EXTRACTLANE(read_u8()); }
+	def visit_F32X4_EXTRACTLANE		(lane_index: u8) {}
+	def visit_F32X4_REPLACELANE_noimm	()						{ visit_F32X4_REPLACELANE(read_u8()); }
+	def visit_F32X4_REPLACELANE		(lane_index: u8) {}
+	def visit_F64X2_EXTRACTLANE_noimm	()						{ visit_F64X2_EXTRACTLANE(read_u8()); }
+	def visit_F64X2_EXTRACTLANE		(lane_index: u8) {}
+	def visit_F64X2_REPLACELANE_noimm	()						{ visit_F64X2_REPLACELANE(read_u8()); }
+	def visit_F64X2_REPLACELANE		(lane_index: u8) {}
+	def visit_I8X16_SWIZZLE			() {}
+	def visit_I8X16_SPLAT			() {}
+	def visit_I16X8_SPLAT			() {}
+	def visit_I32X4_SPLAT			() {}
+	def visit_I64X2_SPLAT			() {}
+	def visit_F32X4_SPLAT			() {}
+	def visit_F64X2_SPLAT			() {}
+	def visit_I8X16_EQ			() {}
+	def visit_I8X16_NE			() {}
+	def visit_I8X16_LT_S			() {}
+	def visit_I8X16_LT_U			() {}
+	def visit_I8X16_GT_S			() {}
+	def visit_I8X16_GT_U			() {}
+	def visit_I8X16_LE_S			() {}
+	def visit_I8X16_LE_U			() {}
+	def visit_I8X16_GE_S			() {}
+	def visit_I8X16_GE_U			() {}
+	def visit_I16X8_EQ			() {}
+	def visit_I16X8_NE			() {}
+	def visit_I16X8_LT_S			() {}
+	def visit_I16X8_LT_U			() {}
+	def visit_I16X8_GT_S			() {}
+	def visit_I16X8_GT_U			() {}
+	def visit_I16X8_LE_S			() {}
+	def visit_I16X8_LE_U			() {}
+	def visit_I16X8_GE_S			() {}
+	def visit_I16X8_GE_U			() {}
+	def visit_I32X4_EQ			() {}
+	def visit_I32X4_NE			() {}
+	def visit_I32X4_LT_S			() {}
+	def visit_I32X4_LT_U			() {}
+	def visit_I32X4_GT_S			() {}
+	def visit_I32X4_GT_U			() {}
+	def visit_I32X4_LE_S			() {}
+	def visit_I32X4_LE_U			() {}
+	def visit_I32X4_GE_S			() {}
+	def visit_I32X4_GE_U			() {}
+	def visit_I64X2_EQ			() {}
+	def visit_I64X2_NE			() {}
+	def visit_I64X2_LT_S			() {}
+	def visit_I64X2_GT_S			() {}
+	def visit_I64X2_LE_S			() {}
+	def visit_I64X2_GE_S			() {}
+	def visit_F32X4_EQ			() {}
+	def visit_F32X4_NE			() {}
+	def visit_F32X4_LT			() {}
+	def visit_F32X4_GT			() {}
+	def visit_F32X4_LE			() {}
+	def visit_F32X4_GE			() {}
+	def visit_F64X2_EQ			() {}
+	def visit_F64X2_NE			() {}
+	def visit_F64X2_LT			() {}
+	def visit_F64X2_GT			() {}
+	def visit_F64X2_LE			() {}
+	def visit_F64X2_GE			() {}
+	def visit_V128_NOT			() {}
+	def visit_V128_AND			() {}
+	def visit_V128_ANDNOT			() {}
+	def visit_V128_OR			() {}
+	def visit_V128_XOR			() {}
+	def visit_V128_BITSELECT		() {}
+	def visit_V128_ANYTRUE			() {}
+	def visit_I8X16_ABS			() {}
+	def visit_I8X16_NEG			() {}
+	def visit_I8X16_POPCNT			() {}
+	def visit_I8X16_ALLTRUE			() {}
+	def visit_I8X16_BITMASK			() {}
+	def visit_I8X16_NARROW_I16X8_S		() {}
+	def visit_I8X16_NARROW_I16X8_U		() {}
+	def visit_I8X16_SHL			() {}
+	def visit_I8X16_SHR_S			() {}
+	def visit_I8X16_SHR_U			() {}
+	def visit_I8X16_ADD			() {}
+	def visit_I8X16_ADD_SAT_S		() {}
+	def visit_I8X16_ADD_SAT_U		() {}
+	def visit_I8X16_SUB			() {}
+	def visit_I8X16_SUB_SAT_S		() {}
+	def visit_I8X16_SUB_SAT_U		() {}
+	def visit_I8X16_MIN_S			() {}
+	def visit_I8X16_MIN_U			() {}
+	def visit_I8X16_MAX_S			() {}
+	def visit_I8X16_MAX_U			() {}
+	def visit_I8X16_AVGR_U			() {}
+	def visit_I16X8_EXTADDPAIRWISE_I8X16_S	() {}
+	def visit_I16X8_EXTADDPAIRWISE_I8X16_U	() {}
+	def visit_I16X8_ABS			() {}
+	def visit_I16X8_NEG			() {}
+	def visit_I16X8_Q15MULRSAT_S		() {}
+	def visit_I16X8_ALLTRUE			() {}
+	def visit_I16X8_BITMASK			() {}
+	def visit_I16X8_NARROW_I32X4_S		() {}
+	def visit_I16X8_NARROW_I32X4_U		() {}
+	def visit_I16X8_EXTEND_LOW_I8X16_S	() {}
+	def visit_I16X8_EXTEND_HIGH_I8X16_S	() {}
+	def visit_I16X8_EXTEND_LOW_I8X16_U	() {}
+	def visit_I16X8_EXTEND_HIGH_I8X16_U	() {}
+	def visit_I16X8_SHL			() {}
+	def visit_I16X8_SHR_S			() {}
+	def visit_I16X8_SHR_U			() {}
+	def visit_I16X8_ADD			() {}
+	def visit_I16X8_ADD_SAT_S		() {}
+	def visit_I16X8_ADD_SAT_U		() {}
+	def visit_I16X8_SUB			() {}
+	def visit_I16X8_SUB_SAT_S		() {}
+	def visit_I16X8_SUB_SAT_U		() {}
+	def visit_I16X8_MUL			() {}
+	def visit_I16X8_MIN_S			() {}
+	def visit_I16X8_MIN_U			() {}
+	def visit_I16X8_MAX_S			() {}
+	def visit_I16X8_MAX_U			() {}
+	def visit_I16X8_AVGR_U			() {}
+	def visit_I16X8_EXTMUL_LOW_I8X16_S	() {}
+	def visit_I16X8_EXTMUL_HIGH_I8X16_S	() {}
+	def visit_I16X8_EXTMUL_LOW_I8X16_U	() {}
+	def visit_I16X8_EXTMUL_HIGH_I8X16_U	() {}
+	def visit_I32X4_EXTADDPAIRWISE_I16X8_S	() {}
+	def visit_I32X4_EXTADDPAIRWISE_I16X8_U	() {}
+	def visit_I32X4_ABS			() {}
+	def visit_I32X4_NEG			() {}
+	def visit_I32X4_ALLTRUE			() {}
+	def visit_I32X4_BITMASK			() {}
+	def visit_I32X4_EXTEND_LOW_I16X8_S	() {}
+	def visit_I32X4_EXTEND_HIGH_I16X8_S	() {}
+	def visit_I32X4_EXTEND_LOW_I16X8_U	() {}
+	def visit_I32X4_EXTEND_HIGH_I16X8_U	() {}
+	def visit_I32X4_SHL			() {}
+	def visit_I32X4_SHR_S			() {}
+	def visit_I32X4_SHR_U			() {}
+	def visit_I32X4_ADD			() {}
+	def visit_I32X4_SUB			() {}
+	def visit_I32X4_MUL			() {}
+	def visit_I32X4_MIN_S			() {}
+	def visit_I32X4_MIN_U			() {}
+	def visit_I32X4_MAX_S			() {}
+	def visit_I32X4_MAX_U			() {}
+	def visit_I32X4_DOT_I16X8_S		() {}
+	def visit_I32X4_EXTMUL_LOW_I16X8_S	() {}
+	def visit_I32X4_EXTMUL_HIGH_I16X8_S	() {}
+	def visit_I32X4_EXTMUL_LOW_I16X8_U	() {}
+	def visit_I32X4_EXTMUL_HIGH_I16X8_U	() {}
+	def visit_I64X2_ABS			() {}
+	def visit_I64X2_NEG			() {}
+	def visit_I64X2_ALLTRUE			() {}
+	def visit_I64X2_BITMASK			() {}
+	def visit_I64X2_EXTEND_LOW_I32X4_S	() {}
+	def visit_I64X2_EXTEND_HIGH_I32X4_S	() {}
+	def visit_I64X2_EXTEND_LOW_I32X4_U	() {}
+	def visit_I64X2_EXTEND_HIGH_I32X4_U	() {}
+	def visit_I64X2_SHL			() {}
+	def visit_I64X2_SHR_S			() {}
+	def visit_I64X2_SHR_U			() {}
+	def visit_I64X2_ADD			() {}
+	def visit_I64X2_SUB			() {}
+	def visit_I64X2_MUL			() {}
+	def visit_I64X2_EXTMUL_LOW_I32X4_S	() {}
+	def visit_I64X2_EXTMUL_HIGH_I32X4_S	() {}
+	def visit_I64X2_EXTMUL_LOW_I32X4_U	() {}
+	def visit_I64X2_EXTMUL_HIGH_I32X4_U	() {}
+	def visit_F32X4_CEIL			() {}
+	def visit_F32X4_FLOOR			() {}
+	def visit_F32X4_TRUNC			() {}
+	def visit_F32X4_NEAREST			() {}
+	def visit_F32X4_ABS			() {}
+	def visit_F32X4_NEG			() {}
+	def visit_F32X4_SQRT			() {}
+	def visit_F32X4_ADD			() {}
+	def visit_F32X4_SUB			() {}
+	def visit_F32X4_MUL			() {}
+	def visit_F32X4_DIV			() {}
+	def visit_F32X4_MIN			() {}
+	def visit_F32X4_MAX			() {}
+	def visit_F32X4_PMIN			() {}
+	def visit_F32X4_PMAX			() {}
+	def visit_F64X2_CEIL			() {}
+	def visit_F64X2_FLOOR			() {}
+	def visit_F64X2_TRUNC			() {}
+	def visit_F64X2_NEAREST			() {}
+	def visit_F64X2_ABS			() {}
+	def visit_F64X2_NEG			() {}
+	def visit_F64X2_SQRT			() {}
+	def visit_F64X2_ADD			() {}
+	def visit_F64X2_SUB			() {}
+	def visit_F64X2_MUL			() {}
+	def visit_F64X2_DIV			() {}
+	def visit_F64X2_MIN			() {}
+	def visit_F64X2_MAX			() {}
+	def visit_F64X2_PMIN			() {}
+	def visit_F64X2_PMAX			() {}
+	def visit_I32X4_TRUNC_SAT_F32X4_S	() {}
+	def visit_I32X4_TRUNC_SAT_F32X4_U	() {}
+	def visit_F32X4_CONVERT_I32X4_S		() {}
+	def visit_F32X4_CONVERT_I32X4_U		() {}
+	def visit_I32X4_TRUNC_SAT_F64X2_S_ZERO	() {}
+	def visit_I32X4_TRUNC_SAT_F64X2_U_ZERO	() {}
+	def visit_F64X2_CONVERT_LOW_I32X4_S	() {}
+	def visit_F64X2_CONVERT_LOW_I32X4_U	() {}
+	def visit_F32X4_DEMOTE_F64X2_ZERO	() {}
+	def visit_F64X2_PROMOTE_LOW_F32X4	() {}
+	// FE prefix: atomics.
+	def visit_MEMORY_ATOMIC_NOTIFY_noimm	()						{ visit_MEMORY_ATOMIC_NOTIFY(read_MemArg()); }
+	def visit_MEMORY_ATOMIC_NOTIFY		(imm: MemArg) 	{}
+	def visit_MEMORY_ATOMIC_WAIT32_noimm	()						{ visit_MEMORY_ATOMIC_WAIT32(read_MemArg()); }
+	def visit_MEMORY_ATOMIC_WAIT32		(imm: MemArg) 	{}
+	def visit_MEMORY_ATOMIC_WAIT64_noimm	()						{ visit_MEMORY_ATOMIC_WAIT64(read_MemArg()); }
+	def visit_MEMORY_ATOMIC_WAIT64		(imm: MemArg) 	{}
+	def visit_ATOMIC_FENCE_noimm	()							{ visit_ATOMIC_FENCE(read_u8()); }
+	def visit_ATOMIC_FENCE			(flags: u8)	{}
+	def visit_I32_ATOMIC_LOAD_noimm	()							{ visit_I32_ATOMIC_LOAD(read_MemArg()); }
+	def visit_I32_ATOMIC_LOAD		(imm: MemArg) 	{}
+	def visit_I64_ATOMIC_LOAD_noimm	()							{ visit_I64_ATOMIC_LOAD(read_MemArg()); }
+	def visit_I64_ATOMIC_LOAD		(imm: MemArg) 	{}
+	def visit_I32_ATOMIC_LOAD8_U_noimm	()						{ visit_I32_ATOMIC_LOAD8_U(read_MemArg()); }
+	def visit_I32_ATOMIC_LOAD8_U		(imm: MemArg) 	{}
+	def visit_I32_ATOMIC_LOAD16_U_noimm	()						{ visit_I32_ATOMIC_LOAD16_U(read_MemArg()); }
+	def visit_I32_ATOMIC_LOAD16_U		(imm: MemArg) 	{}
+	def visit_I64_ATOMIC_LOAD8_U_noimm	()						{ visit_I64_ATOMIC_LOAD8_U(read_MemArg()); }
+	def visit_I64_ATOMIC_LOAD8_U		(imm: MemArg) 	{}
+	def visit_I64_ATOMIC_LOAD16_U_noimm	()						{ visit_I64_ATOMIC_LOAD16_U(read_MemArg()); }
+	def visit_I64_ATOMIC_LOAD16_U		(imm: MemArg) 	{}
+	def visit_I64_ATOMIC_LOAD32_U_noimm	()						{ visit_I64_ATOMIC_LOAD32_U(read_MemArg()); }
+	def visit_I64_ATOMIC_LOAD32_U		(imm: MemArg) 	{}
+	def visit_I32_ATOMIC_STORE_noimm	()						{ visit_I32_ATOMIC_STORE(read_MemArg()); }
+	def visit_I32_ATOMIC_STORE		(imm: MemArg) 	{}
+	def visit_I64_ATOMIC_STORE_noimm	()						{ visit_I64_ATOMIC_STORE(read_MemArg()); }
+	def visit_I64_ATOMIC_STORE		(imm: MemArg) 	{}
+	def visit_I32_ATOMIC_STORE8_noimm	()						{ visit_I32_ATOMIC_STORE8(read_MemArg()); }
+	def visit_I32_ATOMIC_STORE8		(imm: MemArg) 	{}
+	def visit_I32_ATOMIC_STORE16_noimm	()						{ visit_I32_ATOMIC_STORE16(read_MemArg()); }
+	def visit_I32_ATOMIC_STORE16		(imm: MemArg) 	{}
+	def visit_I64_ATOMIC_STORE8_noimm	()						{ visit_I64_ATOMIC_STORE8(read_MemArg()); }
+	def visit_I64_ATOMIC_STORE8		(imm: MemArg) 	{}
+	def visit_I64_ATOMIC_STORE16_noimm	()						{ visit_I64_ATOMIC_STORE16(read_MemArg()); }
+	def visit_I64_ATOMIC_STORE16		(imm: MemArg) 	{}
+	def visit_I64_ATOMIC_STORE32_noimm	()						{ visit_I64_ATOMIC_STORE32(read_MemArg()); }
+	def visit_I64_ATOMIC_STORE32		(imm: MemArg) 	{}
+	def visit_I32_ATOMIC_RMW_ADD_noimm	()						{ visit_I32_ATOMIC_RMW_ADD(read_MemArg()); }
+	def visit_I32_ATOMIC_RMW_ADD		(imm: MemArg) 	{}
+	def visit_I64_ATOMIC_RMW_ADD_noimm	()						{ visit_I64_ATOMIC_RMW_ADD(read_MemArg()); }
+	def visit_I64_ATOMIC_RMW_ADD		(imm: MemArg) 	{}
+	def visit_I32_ATOMIC_RMW8_ADD_U_noimm	()						{ visit_I32_ATOMIC_RMW8_ADD_U(read_MemArg()); }
+	def visit_I32_ATOMIC_RMW8_ADD_U		(imm: MemArg) 	{}
+	def visit_I32_ATOMIC_RMW16_ADD_U_noimm	()						{ visit_I32_ATOMIC_RMW16_ADD_U(read_MemArg()); }
+	def visit_I32_ATOMIC_RMW16_ADD_U	(imm: MemArg) 	{}
+	def visit_I64_ATOMIC_RMW8_ADD_U_noimm	()						{ visit_I64_ATOMIC_RMW8_ADD_U(read_MemArg()); }
+	def visit_I64_ATOMIC_RMW8_ADD_U		(imm: MemArg) 	{}
+	def visit_I64_ATOMIC_RMW16_ADD_U_noimm	()						{ visit_I64_ATOMIC_RMW16_ADD_U(read_MemArg()); }
+	def visit_I64_ATOMIC_RMW16_ADD_U	(imm: MemArg) 	{}
+	def visit_I64_ATOMIC_RMW32_ADD_U_noimm	()						{ visit_I64_ATOMIC_RMW32_ADD_U(read_MemArg()); }
+	def visit_I64_ATOMIC_RMW32_ADD_U	(imm: MemArg) 	{}
+	def visit_I32_ATOMIC_RMW_SUB_noimm	()						{ visit_I32_ATOMIC_RMW_SUB(read_MemArg()); }
+	def visit_I32_ATOMIC_RMW_SUB		(imm: MemArg) 	{}
+	def visit_I64_ATOMIC_RMW_SUB_noimm	()						{ visit_I64_ATOMIC_RMW_SUB(read_MemArg()); }
+	def visit_I64_ATOMIC_RMW_SUB		(imm: MemArg) 	{}
+	def visit_I32_ATOMIC_RMW8_SUB_U_noimm	()						{ visit_I32_ATOMIC_RMW8_SUB_U(read_MemArg()); }
+	def visit_I32_ATOMIC_RMW8_SUB_U		(imm: MemArg) 	{}
+	def visit_I32_ATOMIC_RMW16_SUB_U_noimm	()						{ visit_I32_ATOMIC_RMW16_SUB_U(read_MemArg()); }
+	def visit_I32_ATOMIC_RMW16_SUB_U	(imm: MemArg) 	{}
+	def visit_I64_ATOMIC_RMW8_SUB_U_noimm	()						{ visit_I64_ATOMIC_RMW8_SUB_U(read_MemArg()); }
+	def visit_I64_ATOMIC_RMW8_SUB_U		(imm: MemArg) 	{}
+	def visit_I64_ATOMIC_RMW16_SUB_U_noimm	()						{ visit_I64_ATOMIC_RMW16_SUB_U(read_MemArg()); }
+	def visit_I64_ATOMIC_RMW16_SUB_U	(imm: MemArg) 	{}
+	def visit_I64_ATOMIC_RMW32_SUB_U_noimm	()						{ visit_I64_ATOMIC_RMW32_SUB_U(read_MemArg()); }
+	def visit_I64_ATOMIC_RMW32_SUB_U	(imm: MemArg) 	{}
+	def visit_I32_ATOMIC_RMW_AND_noimm	()						{ visit_I32_ATOMIC_RMW_AND(read_MemArg()); }
+	def visit_I32_ATOMIC_RMW_AND		(imm: MemArg) 	{}
+	def visit_I64_ATOMIC_RMW_AND_noimm	()						{ visit_I64_ATOMIC_RMW_AND(read_MemArg()); }
+	def visit_I64_ATOMIC_RMW_AND		(imm: MemArg) 	{}
+	def visit_I32_ATOMIC_RMW8_AND_U_noimm	()						{ visit_I32_ATOMIC_RMW8_AND_U(read_MemArg()); }
+	def visit_I32_ATOMIC_RMW8_AND_U		(imm: MemArg) 	{}
+	def visit_I32_ATOMIC_RMW16_AND_U_noimm	()						{ visit_I32_ATOMIC_RMW16_AND_U(read_MemArg()); }
+	def visit_I32_ATOMIC_RMW16_AND_U	(imm: MemArg) 	{}
+	def visit_I64_ATOMIC_RMW8_AND_U_noimm	()						{ visit_I64_ATOMIC_RMW8_AND_U(read_MemArg()); }
+	def visit_I64_ATOMIC_RMW8_AND_U		(imm: MemArg) 	{}
+	def visit_I64_ATOMIC_RMW16_AND_U_noimm	()						{ visit_I64_ATOMIC_RMW16_AND_U(read_MemArg()); }
+	def visit_I64_ATOMIC_RMW16_AND_U	(imm: MemArg) 	{}
+	def visit_I64_ATOMIC_RMW32_AND_U_noimm	()						{ visit_I64_ATOMIC_RMW32_AND_U(read_MemArg()); }
+	def visit_I64_ATOMIC_RMW32_AND_U	(imm: MemArg) 	{}
+	def visit_I32_ATOMIC_RMW_OR_noimm	()						{ visit_I32_ATOMIC_RMW_OR(read_MemArg()); }
+	def visit_I32_ATOMIC_RMW_OR		(imm: MemArg) 	{}
+	def visit_I64_ATOMIC_RMW_OR_noimm	()						{ visit_I64_ATOMIC_RMW_OR(read_MemArg()); }
+	def visit_I64_ATOMIC_RMW_OR		(imm: MemArg) 	{}
+	def visit_I32_ATOMIC_RMW8_OR_U_noimm	()						{ visit_I32_ATOMIC_RMW8_OR_U(read_MemArg()); }
+	def visit_I32_ATOMIC_RMW8_OR_U		(imm: MemArg) 	{}
+	def visit_I32_ATOMIC_RMW16_OR_U_noimm	()						{ visit_I32_ATOMIC_RMW16_OR_U(read_MemArg()); }
+	def visit_I32_ATOMIC_RMW16_OR_U		(imm: MemArg) 	{}
+	def visit_I64_ATOMIC_RMW8_OR_U_noimm	()						{ visit_I64_ATOMIC_RMW8_OR_U(read_MemArg()); }
+	def visit_I64_ATOMIC_RMW8_OR_U		(imm: MemArg) 	{}
+	def visit_I64_ATOMIC_RMW16_OR_U_noimm	()						{ visit_I64_ATOMIC_RMW16_OR_U(read_MemArg()); }
+	def visit_I64_ATOMIC_RMW16_OR_U		(imm: MemArg) 	{}
+	def visit_I64_ATOMIC_RMW32_OR_U_noimm	()						{ visit_I64_ATOMIC_RMW32_OR_U(read_MemArg()); }
+	def visit_I64_ATOMIC_RMW32_OR_U		(imm: MemArg) 	{}
+	def visit_I32_ATOMIC_RMW_XOR_noimm	()						{ visit_I32_ATOMIC_RMW_XOR(read_MemArg()); }
+	def visit_I32_ATOMIC_RMW_XOR		(imm: MemArg) 	{}
+	def visit_I64_ATOMIC_RMW_XOR_noimm	()						{ visit_I64_ATOMIC_RMW_XOR(read_MemArg()); }
+	def visit_I64_ATOMIC_RMW_XOR		(imm: MemArg) 	{}
+	def visit_I32_ATOMIC_RMW8_XOR_U_noimm	()						{ visit_I32_ATOMIC_RMW8_XOR_U(read_MemArg()); }
+	def visit_I32_ATOMIC_RMW8_XOR_U		(imm: MemArg) 	{}
+	def visit_I32_ATOMIC_RMW16_XOR_U_noimm	()						{ visit_I32_ATOMIC_RMW16_XOR_U(read_MemArg()); }
+	def visit_I32_ATOMIC_RMW16_XOR_U	(imm: MemArg) 	{}
+	def visit_I64_ATOMIC_RMW8_XOR_U_noimm	()						{ visit_I64_ATOMIC_RMW8_XOR_U(read_MemArg()); }
+	def visit_I64_ATOMIC_RMW8_XOR_U		(imm: MemArg) 	{}
+	def visit_I64_ATOMIC_RMW16_XOR_U_noimm	()						{ visit_I64_ATOMIC_RMW16_XOR_U(read_MemArg()); }
+	def visit_I64_ATOMIC_RMW16_XOR_U	(imm: MemArg) 	{}
+	def visit_I64_ATOMIC_RMW32_XOR_U_noimm	()						{ visit_I64_ATOMIC_RMW32_XOR_U(read_MemArg()); }
+	def visit_I64_ATOMIC_RMW32_XOR_U	(imm: MemArg) 	{}
+	def visit_I32_ATOMIC_RMW_XCHG_noimm	()						{ visit_I32_ATOMIC_RMW_XCHG(read_MemArg()); }
+	def visit_I32_ATOMIC_RMW_XCHG		(imm: MemArg) 	{}
+	def visit_I64_ATOMIC_RMW_XCHG_noimm	()						{ visit_I64_ATOMIC_RMW_XCHG(read_MemArg()); }
+	def visit_I64_ATOMIC_RMW_XCHG		(imm: MemArg) 	{}
+	def visit_I32_ATOMIC_RMW8_XCHG_U_noimm	()						{ visit_I32_ATOMIC_RMW8_XCHG_U(read_MemArg()); }
+	def visit_I32_ATOMIC_RMW8_XCHG_U	(imm: MemArg) 	{}
+	def visit_I32_ATOMIC_RMW16_XCHG_U_noimm	()						{ visit_I32_ATOMIC_RMW16_XCHG_U(read_MemArg()); }
+	def visit_I32_ATOMIC_RMW16_XCHG_U	(imm: MemArg) 	{}
+	def visit_I64_ATOMIC_RMW8_XCHG_U_noimm	()						{ visit_I64_ATOMIC_RMW8_XCHG_U(read_MemArg()); }
+	def visit_I64_ATOMIC_RMW8_XCHG_U	(imm: MemArg) 	{}
+	def visit_I64_ATOMIC_RMW16_XCHG_U_noimm	()						{ visit_I64_ATOMIC_RMW16_XCHG_U(read_MemArg()); }
+	def visit_I64_ATOMIC_RMW16_XCHG_U	(imm: MemArg) 	{}
+	def visit_I64_ATOMIC_RMW32_XCHG_U_noimm	()						{ visit_I64_ATOMIC_RMW32_XCHG_U(read_MemArg()); }
+	def visit_I64_ATOMIC_RMW32_XCHG_U	(imm: MemArg) 	{}
+	def visit_I32_ATOMIC_RMW_CMPXCHG_noimm	()						{ visit_I32_ATOMIC_RMW_CMPXCHG(read_MemArg()); }
+	def visit_I32_ATOMIC_RMW_CMPXCHG	(imm: MemArg) 	{}
+	def visit_I64_ATOMIC_RMW_CMPXCHG_noimm	()						{ visit_I64_ATOMIC_RMW_CMPXCHG(read_MemArg()); }
+	def visit_I64_ATOMIC_RMW_CMPXCHG	(imm: MemArg) 	{}
+	def visit_I32_ATOMIC_RMW8_CMPXCHG_U_noimm	()					{ visit_I32_ATOMIC_RMW8_CMPXCHG_U(read_MemArg()); }
+	def visit_I32_ATOMIC_RMW8_CMPXCHG_U	(imm: MemArg) 	{}
+	def visit_I32_ATOMIC_RMW16_CMPXCHG_U_noimm	()					{ visit_I32_ATOMIC_RMW16_CMPXCHG_U(read_MemArg()); }
+	def visit_I32_ATOMIC_RMW16_CMPXCHG_U	(imm: MemArg) 	{}
+	def visit_I64_ATOMIC_RMW8_CMPXCHG_U_noimm	()					{ visit_I64_ATOMIC_RMW8_CMPXCHG_U(read_MemArg()); }
+	def visit_I64_ATOMIC_RMW8_CMPXCHG_U	(imm: MemArg) 	{}
+	def visit_I64_ATOMIC_RMW16_CMPXCHG_U_noimm	()					{ visit_I64_ATOMIC_RMW16_CMPXCHG_U(read_MemArg()); }
+	def visit_I64_ATOMIC_RMW16_CMPXCHG_U	(imm: MemArg) 	{}
+	def visit_I64_ATOMIC_RMW32_CMPXCHG_U_noimm	()					{ visit_I64_ATOMIC_RMW32_CMPXCHG_U(read_MemArg()); }
+	def visit_I64_ATOMIC_RMW32_CMPXCHG_U	(imm: MemArg) 	{}
+
+	// Error methods. Override to set error-handling behavior.
+	def error(pos: u32, msg: string) {
+	}
+	def error_EOF(pos: u32) {
+		error(pos, "EOF reading opcode");
+	}
+	def error_OverlongLEB(pos: u32) {
+		error(pos, "overlong LEB");
+	}
+	def error_UnterminatedULEB31(pos: u32) {
+		error(pos, "unterminated LEB");
+	}
+	def error_TooLargeULEB31(pos: u32) {
+		error(pos, "LEB larger than 31-bit range");
+	}
+
+
+	private def read_u8x16() -> Range<byte>;
+	private def read_u8() -> byte;
+	private def read_BrOnCastImm() -> BrOnCastImm;
+	private def read_sleb32() -> i32;
+	private def read_sleb64() -> i64;
+	private def read_u32() -> u32;
+	private def read_u64() -> u64;
+	private def read_ValueTypeCodes() -> Range<ValueTypeCode>;
+	private def read_CatchCodes() -> Range<BpCatchCode>;
+	private def read_Labels() -> Range<u31>;
+	private def read_MemArg() -> MemArg;
+	private def read_BlockTypeCode() -> BlockTypeCode {
+		var r = codeptr.at(int.!(pos)).read_BlockTypeCode();
+		pos = u32.view(codeptr.pos);
+		return r;
+	}
+	// A customized routine to read an unsigned 31-bit integer.
+	private def read_uleb31() -> u31 { //#inline
+		if (pos < code.length) { //#likely
+			var first: byte = code[pos++];
+			if ((first & 0x80) == 0) return first;
+			return read_extleb_opcode(first);
+		}
+		error_EOF(pos);
+		return u31.max;
+	}
+	// A customized routine to read the extended bytes of an LEB for a secondary opcode.
+	private def read_extleb_opcode(first: byte) -> u31 { //#out-of-line
+		var result = u32.view(first) & 0x7Fu, shift = 7;
+		while (pos < code.length) {
+			var b = code[pos++];
+			result = result | u32.view(b & 0x7F) << u5.view(shift);
+			shift += 7;
+			if (shift == 35) { // consumed (special) 5th byte
+				// check upper bits of last byte and extension
+				if ((b & 0x80) != 0) {
+					error_OverlongLEB(pos);
+					return u31.max;
+				}
+				var upper = i7.view(b) >> 3;
+				if (upper != 0) {
+					error_TooLargeULEB31(pos);
+					return u31.max;
+				}
+				return u31.view(result);
+			}
+			if (b < 0x80) { // no continuation byte
+				return u31.view(result);
+			}
+		}
+		error_UnterminatedULEB31(pos);
+		return u31.max;
+	}
+}
