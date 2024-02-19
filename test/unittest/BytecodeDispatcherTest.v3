@@ -1,0 +1,150 @@
+// Copyright 2022 Ben L. Titzer. All rights reserved.
+// See LICENSE for details of Apache 2.0 license.
+
+def T = UnitTests.registerT("dispatcher:", _, BytecodeDispatcherTester.new, _);
+def O = Trace.OUT;
+
+def X = [
+	T("local_get0", test_local_get0),
+	T("iterate0", test_iterate0),
+	T("iterate1", test_iterate1),
+	()
+];
+
+class BytecodeDispatcherTester(t: Tester) extends ModuleBuilder {
+	def dispatcher() -> BytecodeCounter {
+		var code = func.cur_bytecode;
+		O.put1("func.cur_bytecode=%d", code.length).outln();
+		var c: BytecodeCounter = BytecodeCounter.new();
+		if (code.length > 33000) c = BytecodeCounter2.new();
+		return c.reset(func.cur_bytecode, 1);
+	}
+}
+
+def ITERATIONS = 100000;
+
+def dispatch_n(iterations: int, d: BytecodeDispatcher) {
+	for (i < iterations) d.dispatch();
+}
+
+def iterate_n(iterations: int, start: u32, d: BytecodeDispatcher) {
+	for (i < iterations) {
+		d.at(start);
+		while (d.pos < d.code.length) {
+			d.dispatch();
+			d.next();
+		}
+	}
+
+}
+
+def iterator_n(iterations: int, it: BytecodeIterator, v: BytecodeVisitor) {
+	for (i < iterations) {
+		it.skipToPc(0);
+		while (it.more()) {
+			it.dispatch(v);
+			it.next();
+		}
+	}
+}
+
+def test_local_get0(t: BytecodeDispatcherTester) {
+	t.code([Opcode.LOCAL_GET.code, 0]);
+	var c = t.dispatcher();
+	time_call(5, ITERATIONS, dispatch_n, (ITERATIONS, c));
+	c.out();
+}
+
+def test_iterate0(t: BytecodeDispatcherTester) {
+	t.code([
+		Opcode.LOCAL_GET.code, 0,
+		Opcode.LOCAL_SET.code, 1,
+		Opcode.NOP.code,
+		Opcode.NOP.code,
+		Opcode.NOP.code,
+		Opcode.NOP.code
+	]);
+	var c = t.dispatcher();
+	var d = if (t.func.cur_bytecode.length > 90000, BytecodeDispatcher.new(), c);
+	def iterations = ITERATIONS / 3;
+	time_call(5, iterations, iterate_n, (iterations, d.pc, d));
+	c.out();
+}
+
+def test_iterate1(t: BytecodeDispatcherTester) {
+	t.code([
+		Opcode.LOCAL_GET.code, 0,
+		Opcode.LOCAL_SET.code, 1,
+		Opcode.NOP.code,
+		Opcode.NOP.code,
+		Opcode.NOP.code,
+		Opcode.NOP.code
+	]);
+	var it = BytecodeIterator.new().reset(t.func);
+	var c = BytecodeCounterVisitor.new();
+	def iterations = ITERATIONS / 3;
+	time_call(5, iterations, iterator_n, (iterations, it, c));
+	c.out();
+}
+
+def time_call<P, R>(repeat: int, iterations: int, f: P -> R, p: P) {
+	for (i < repeat) {
+		var before = System.ticksUs();
+		// ===============
+		f(p);
+		// ===============
+		var diff = System.ticksUs() - before;
+		O.put1("time x %d: ", iterations);
+		O.put2("%d %s", diff, Metrics.us);
+		O.put1(" (%d ns / iteration)", (diff * 1000) / ITERATIONS);
+		O.outln();
+	}
+}
+
+class BytecodeCounter extends BytecodeDispatcher {
+	var count_NOP: u64;
+	var count_LOCAL_GET: u64;
+	var count_LOCAL_SET: u64;
+
+	def visit_NOP() { count_NOP++; }
+	def visit_LOCAL_GET(index: u31) { count_LOCAL_GET++; }
+	def visit_LOCAL_SET(index: u31) { count_LOCAL_SET++; }
+
+	def out() {
+		for (t in [
+			("NOP", count_NOP),
+			("LOCAL_GET", count_LOCAL_GET),
+			("LOCAL_SET", count_LOCAL_SET)
+			]) {
+			O.mark().puts(t.0).ljustify_mark(12);
+			O.putd(t.1).outln();
+		}
+	}
+}
+
+class BytecodeCounter2 extends BytecodeCounter { // to add polymorphism
+	def visit_NOP() { count_NOP++; }
+	def visit_LOCAL_GET(index: u31) { count_LOCAL_GET++; }
+	def visit_LOCAL_SET(index: u31) { count_LOCAL_SET++; }
+}
+
+class BytecodeCounterVisitor extends BytecodeVisitor {
+	var count_NOP: u64;
+	var count_LOCAL_GET: u64;
+	var count_LOCAL_SET: u64;
+
+	def visit_NOP() { count_NOP++; }
+	def visit_LOCAL_GET(index: u31) { count_LOCAL_GET++; }
+	def visit_LOCAL_SET(index: u31) { count_LOCAL_SET++; }
+
+	def out() {
+		for (t in [
+			("NOP", count_NOP),
+			("LOCAL_GET", count_LOCAL_GET),
+			("LOCAL_SET", count_LOCAL_SET)
+			]) {
+			O.mark().puts(t.0).ljustify_mark(12);
+			O.putd(t.1).outln();
+		}
+	}
+}

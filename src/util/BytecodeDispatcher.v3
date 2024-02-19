@@ -6,14 +6,22 @@
 // the appropriate category method, allowing many instructions to be handled by overriding
 // one or more methods.
 class BytecodeDispatcher {
-	private def codeptr: CodePtr;
+	def codeptr = CodePtr.new(null);
 	def var code: Range<byte>;
 	def var pc: u32;
 	def var pos: u32;
 
 	def reset(code: Range<byte>, pc: u31) -> this {
 		codeptr.reset(code, pc, code.length);
-		this.pc = pc;
+		this.code = code;
+		this.pc = this.pos = pc;
+	}
+
+	def at(npc: u32) -> this {
+		pc = pos = npc;
+	}
+	def next() -> this {
+		pc = pos;
 	}
 
 	def dispatch() {

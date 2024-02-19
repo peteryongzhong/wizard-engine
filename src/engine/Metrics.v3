@@ -3,8 +3,8 @@
 
 // Global metrics collected by the engine.
 component Metrics {
-	private def us = "\xCE\xBCs";
-	private def bytes = "bytes";
+	def us = "\xCE\xBCs";
+	def bytes = "bytes";
 	private var all: List<Metric>;
 
 	// Metrics from initialization/startup.
