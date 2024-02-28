@@ -52,40 +52,17 @@ component X86_64Runtime {
 	//=====================================================================
 	// Callbacks for complex bytecodes
 	//=====================================================================
-	def runtime_MEMORY_GROW(instance: Instance, index: u32) {
-		var memory = instance.memories[index];
-		var pages = curStack.popu();
-		var result = memory.grow(pages);
-		curStack.push(Values.i_v(result));
+	def runtime_MEMORY_GROW(instance: Instance, mem_index: u31) {
+		return Runtime.MEMORY_GROW(curStack, instance, mem_index);
 	}
-	def runtime_MEMORY_INIT(instance: Instance, dindex: u32, mindex: u32) -> Throwable {
-		var memory = instance.memories[mindex];
-		var ddecl = if(!instance.dropped_data[dindex], instance.module.data[int.!(dindex)]);
-		var size = curStack.popu();
-		var src_offset = curStack.popu();
-		var dst_offset = curStack.popu();
-		var t = memory.copyIn(dst_offset, if(ddecl != null, ddecl.data), src_offset, size);
-		if (t != TrapReason.NONE) return doTrap(t, CiRuntime.callerSp());
-		return null;
+	def runtime_MEMORY_INIT(instance: Instance, data_index: u31, mem_index: u31) -> Throwable {
+		return Runtime.MEMORY_INIT(curStack.setRsp(CiRuntime.callerSp()), instance, data_index, mem_index);
 	}
-	def runtime_MEMORY_COPY(instance: Instance, mindex1: u32, mindex2: u32) -> Throwable { // XXX: inline
-		var dst = instance.memories[mindex1];
-		var src = instance.memories[mindex2];
-		var size = curStack.popu();
-		var src_offset = curStack.popu();
-		var dst_offset = curStack.popu();
-		var t = dst.copyM(dst_offset, src, src_offset, size);
-		if (t != TrapReason.NONE) return doTrap(t, CiRuntime.callerSp());
-		return null;
+	def runtime_MEMORY_COPY(instance: Instance, mem_index1: u31, mem_index2: u31) -> Throwable {
+		return Runtime.MEMORY_COPY(curStack.setRsp(CiRuntime.callerSp()), instance, mem_index1, mem_index2);
 	}
-	def runtime_MEMORY_FILL(instance: Instance, mindex: u32) -> Throwable {
-		var memory = instance.memories[mindex];
-		var size = curStack.popu();
-		var val = curStack.popu();
-		var dest = curStack.popu();
-		var t = memory.fill(dest, u8.view(val), size);
-		if (t != TrapReason.NONE) return doTrap(t, CiRuntime.callerSp());
-		return null;
+	def runtime_MEMORY_FILL(instance: Instance, mem_index: u31) -> Throwable {
+		return Runtime.MEMORY_FILL(curStack.setRsp(CiRuntime.callerSp()), instance, mem_index);
 	}
 	def runtime_GLOBAL_GET(instance: Instance, index: u32) { // XXX: inline when Value rep known
 		var val = instance.globals[index].value;

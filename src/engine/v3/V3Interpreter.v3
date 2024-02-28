@@ -498,11 +498,8 @@ class V3Interpreter extends WasmStack {
 				pushm(memory, memory.size());
 			}
 			MEMORY_GROW => {
-				var index = codeptr.read_uleb32();
-				var memory = frame.func.instance.memories[index];
-				var pages = popm(memory);
-				var result = if(u32.?(pages), memory.grow(u32.!(pages)), -1); // TODO: memory64
-				pushm(memory, u64.view(result));
+				var mem_index = codeptr.read_uleb31();
+				Runtime.MEMORY_GROW(this, frame.func.instance, mem_index);
 			}
 
 			I32_CONST => pushi(codeptr.read_sleb32());
@@ -929,36 +926,20 @@ class V3Interpreter extends WasmStack {
 			I64_TRUNC_SAT_F64_S => pushl(i64.truncd(popd()));
 			I64_TRUNC_SAT_F64_U => pushw(u64.truncd(popd()));
 			MEMORY_INIT => {
-				var i = frame.func.instance;
-				var dindex = codeptr.read_uleb32();
-				var ddecl = if(!i.dropped_data[dindex], i.module.data[int.!(dindex)]);
-				var mem = i.memories[codeptr.read_uleb32()];
-				var size = popu();
-				var src_offset = popu();
-				var dst_offset = popu();
-				var t = mem.copyIn(dst_offset, if(ddecl != null, ddecl.data), src_offset, size);
-				if (t != TrapReason.NONE) trap(t);
+				var data_index = codeptr.read_uleb31(), mem_index = codeptr.read_uleb31();
+				Runtime.MEMORY_INIT(this, frame.func.instance, data_index, mem_index);
 			}
 			DATA_DROP => {
 				var dindex = codeptr.read_uleb32();
 				frame.func.instance.dropped_data[dindex] = true;
 			}
 			MEMORY_COPY => {
-				var i = frame.func.instance;
-				var dst = i.memories[codeptr.read_uleb32()];
-				var src = i.memories[codeptr.read_uleb32()];
-				var size = popu(), src_offset = popu(), dst_offset = popu();
-				var t = dst.copyM(dst_offset, src, src_offset, size);
-				if (t != TrapReason.NONE) trap(t);
+				var dst = codeptr.read_uleb31(), src = codeptr.read_uleb31();
+				Runtime.MEMORY_COPY(this, frame.func.instance, dst, src);
 			}
 			MEMORY_FILL => {
-				var i = frame.func.instance;
-				var mem = i.memories[codeptr.read_uleb32()];
-				var size = popu();
-				var val = popu();
-				var dest = popu();
-				var t = mem.fill(dest, u8.view(val), size);
-				if (t != TrapReason.NONE) trap(t);
+				var mem_index = codeptr.read_uleb31();
+				Runtime.MEMORY_FILL(this, frame.func.instance, mem_index);
 			}
 			TABLE_INIT => {
 				var i = frame.func.instance;
@@ -1264,13 +1245,13 @@ class V3Interpreter extends WasmStack {
 	}
 	def doLoad<T>(size: byte, read: Range<byte> -> T, box: T -> Value) {
 		var t = doLoadReg(size);
-		if (t.reason != TrapReason.NONE) return trap(t.reason);
+		if (t.reason != TrapReason.NONE) return void(trap(t.reason));
 		else push(box(read(t.result)));
 	}
 	def doLoadLane<T>(size: byte, log2_size: u3, read: Range<byte> -> T) {
 		var v = Values.v_s(pop());
 		var t = doLoadReg(size);
-		if (t.reason != TrapReason.NONE) return trap(t.reason);
+		if (t.reason != TrapReason.NONE) return void(trap(t.reason));
 		var val = u64.!(read(t.result));
 		var idx = codeptr.read1();
 		var low = v.0, high = v.1;
@@ -1288,7 +1269,7 @@ class V3Interpreter extends WasmStack {
 	}
 	def doLoadZero<T>(size: byte, read: Range<byte> -> T) {
 		var t = doLoadReg(size);
-		if (t.reason != TrapReason.NONE) return trap(t.reason);
+		if (t.reason != TrapReason.NONE) return void(trap(t.reason));
 		var val = u64.!(read(t.result));
 		var high = 0ul;
 		push(Value.V128(val, high));
@@ -1296,7 +1277,7 @@ class V3Interpreter extends WasmStack {
 	// Tn: narrow source type, Sw: (signed) wide type, Uw: corresponding unsigned wide type
 	def doLoadExtend<Tn, Sw, Uw>(size: byte, view: u64 -> Tn, extend: Tn -> Sw, convert: Sw -> Uw) {
 		var t = doLoadReg(8);
-		if (t.reason != TrapReason.NONE) return trap(t.reason);
+		if (t.reason != TrapReason.NONE) return void(trap(t.reason));
 		var val = DataReaders.read_range_u64(t.result);
 		var low = 0ul, high = 0ul;
 		def src_shift = u6.view(size << 3);
@@ -1394,7 +1375,7 @@ class V3Interpreter extends WasmStack {
 	}
 	def doLoadSplat<T>(size: byte, log2_size: byte, read: Range<byte> -> T) {
 		var t = doLoadReg(size);
-		if (t.reason != TrapReason.NONE) return trap(t.reason);
+		if (t.reason != TrapReason.NONE) return void(trap(t.reason));
 		var val = u64.!(read(t.result));
 		doSplatV(size, log2_size, val);
 	}
@@ -1419,8 +1400,8 @@ class V3Interpreter extends WasmStack {
 		var memory = frame.func.instance.memories[memarg.memory_index];
 		var val = pop();
 		var index = popm(memory);
-		if (!u32.?(index)) return trap(TrapReason.MEM_OUT_OF_BOUNDS);
-		if (!u32.?(memarg.offset)) return trap(TrapReason.MEM_OUT_OF_BOUNDS);
+		if (!u32.?(index)) return void(trap(TrapReason.MEM_OUT_OF_BOUNDS));
+		if (!u32.?(memarg.offset)) return void(trap(TrapReason.MEM_OUT_OF_BOUNDS));
 		var t = memory.range_oil_32(u32.!(memarg.offset), u32.!(index), size);
 		if (t.reason != TrapReason.NONE) trap(t.reason);
 		else write(t.result, unbox(val));
@@ -1523,15 +1504,15 @@ class V3Interpreter extends WasmStack {
 	}
 	def doTruncF32<T>(min: float, max: float, trunc: float -> T, push: T -> ()) {
 		var a = popf();
-		if (a >= max) return trap(TrapReason.FLOAT_UNREPRESENTABLE);
-		if (a <= min) return trap(TrapReason.FLOAT_UNREPRESENTABLE);
+		if (a >= max) return void(trap(TrapReason.FLOAT_UNREPRESENTABLE));
+		if (a <= min) return void(trap(TrapReason.FLOAT_UNREPRESENTABLE));
 		if (!(a == a)) trap(TrapReason.FLOAT_UNREPRESENTABLE);
 		push(trunc(a));
 	}
 	def doTruncF64<T>(min: double, max: double, trunc: double -> T, push: T -> ()) {
 		var a = popd();
-		if (a >= max) return trap(TrapReason.FLOAT_UNREPRESENTABLE);
-		if (a <= min) return trap(TrapReason.FLOAT_UNREPRESENTABLE);
+		if (a >= max) return void(trap(TrapReason.FLOAT_UNREPRESENTABLE));
+		if (a <= min) return void(trap(TrapReason.FLOAT_UNREPRESENTABLE));
 		if (!(a == a)) trap(TrapReason.FLOAT_UNREPRESENTABLE);
 		push(trunc(a));
 	}
@@ -1564,10 +1545,11 @@ class V3Interpreter extends WasmStack {
 		thrown = ex; // unhandled exception
 		state_ = StackState.THROWING;
 	}
-	def trap(reason: TrapReason) {
+	def trap(reason: TrapReason) -> Throwable {
 		var stacktrace = popAllFrames(true);
 		thrown = Trap.new(reason, null, stacktrace);
 		state_ = StackState.THROWING;
+		return thrown;
 	}
 	def fail(msg: string) {
 		var stacktrace = popAllFrames(true);
@@ -1597,10 +1579,6 @@ class V3Interpreter extends WasmStack {
 	def pushm(memory: Memory, val: u64) {
 		if (memory.decl.indexType == ValueType.I32) pushu(u32.view(val));
 		else pushw(val);
-	}
-	def trap_or<T>(r: (T, TrapReason), push: T -> ()) {
-		if (r.1 != TrapReason.NONE) return trap(r.1);
-		push(r.0);
 	}
 	def popN(count: int) -> Array<Value> {
 		var result = Array<Value>.new(count);
@@ -1682,7 +1660,7 @@ class V3Interpreter extends WasmStack {
 		var y = Values.v_u(values.elems[values.top-1]);
 		var x = Values.v_u(values.elems[values.top-2]);
 		var r = f(x, y);
-		if (r.1 != TrapReason.NONE) return trap(r.1);
+		if (r.1 != TrapReason.NONE) return void(trap(r.1));
 		values.elems[values.top-2] = Value.I32(r.0);
 		values.top--;
 	}
@@ -1690,7 +1668,7 @@ class V3Interpreter extends WasmStack {
 		var y = Values.v_u(values.elems[values.top-1]);
 		var x = Values.v_u(values.elems[values.top-2]);
 		var r = f(i32.view(x), i32.view(y));
-		if (r.1 != TrapReason.NONE) return trap(r.1);
+		if (r.1 != TrapReason.NONE) return void(trap(r.1));
 		values.elems[values.top-2] = Value.I32(u32.view(r.0));
 		values.top--;
 	}
@@ -1724,7 +1702,7 @@ class V3Interpreter extends WasmStack {
 		var y = Values.v_l(values.elems[values.top-1]);
 		var x = Values.v_l(values.elems[values.top-2]);
 		var r = f(x, y);
-		if (r.1 != TrapReason.NONE) return trap(r.1);
+		if (r.1 != TrapReason.NONE) return void(trap(r.1));
 		values.elems[values.top-2] = Value.I64(u64.view(r.0));
 		values.top--;
 	}
@@ -1739,7 +1717,7 @@ class V3Interpreter extends WasmStack {
 		var y = Values.v_w(values.elems[values.top-1]);
 		var x = Values.v_w(values.elems[values.top-2]);
 		var r = f(x, y);
-		if (r.1 != TrapReason.NONE) return trap(r.1);
+		if (r.1 != TrapReason.NONE) return void(trap(r.1));
 		values.elems[values.top-2] = Value.I64(r.0);
 		values.top--;
 	}

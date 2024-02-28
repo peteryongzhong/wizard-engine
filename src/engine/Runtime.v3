@@ -4,6 +4,42 @@
 // Shared runtime routines that are called by different execution tiers, both the
 // pure-Virgil (V3) implementation, and any native implementations.
 component Runtime {
+	def MEMORY_GROW(stack: ExecStack, instance: Instance, mem_index: u31) {
+		var memory = instance.memories[mem_index];
+		var pages = stack.popu();
+		var result = memory.grow(pages);
+		stack.pushi(result);
+	}
+	def MEMORY_INIT(stack: ExecStack, instance: Instance, data_index: u31, mem_index: u31) -> Throwable {
+		var memory = instance.memories[mem_index];
+		var ddecl = if(!instance.dropped_data[data_index], instance.module.data[data_index]);
+		var size = stack.popu();
+		var src_offset = stack.popu();
+		var dst_offset = stack.popu();
+		var t = memory.copyIn(dst_offset, if(ddecl != null, ddecl.data), src_offset, size);
+		if (t != TrapReason.NONE) return stack.trap(t);
+		return null;
+	}
+	def MEMORY_COPY(stack: ExecStack, instance: Instance, mem_index1: u31, mem_index2: u31) -> Throwable {
+		var dst = instance.memories[mem_index1];
+		var src = instance.memories[mem_index2];
+		var size = stack.popu();
+		var src_offset = stack.popu();
+		var dst_offset = stack.popu();
+		var t = dst.copyM(dst_offset, src, src_offset, size);
+		if (t != TrapReason.NONE) return stack.trap(t);
+		return null;
+	}
+	def MEMORY_FILL(stack: ExecStack, instance: Instance, mem_index: u32) -> Throwable {
+		var memory = instance.memories[mem_index];
+		var size = stack.popu();
+		var val = stack.popu();
+		var dest = stack.popu();
+		var t = memory.fill(dest, u8.view(val), size);
+		if (t != TrapReason.NONE) return stack.trap(t);
+		return null;
+	}
+
 	def ARRAY_NEW_DATA(i: Instance, index: u32, dindex: u32, offset: u32, len: u32) -> MaybeTrap<HeapArray> {
 		if (!i.dropped_data[dindex]) {
 			var rtt = ArrayDecl.!(i.heaptypes[index]);
