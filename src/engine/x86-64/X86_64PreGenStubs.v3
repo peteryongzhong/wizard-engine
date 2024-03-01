@@ -28,7 +28,6 @@ layout X86_64PreGenHeader {
 	+36	deoptReentryOffset:		i32;	// re-enter interpreter from optimized code
 	+40	oobMemoryHandlerOffset:		i32;	// handler for signals caused by OOB memory access
 	+44	divZeroHandlerOffset:		i32;	// handler for signals caused by divide by zero
-	+48	stackOverflowHandlerOffset:	i32;	// handler for signals caused by (value- or call-) stack overflow
 	+56	hostCallStubOffset:		i32;	// host call stub that calls runtime
 	+60	hostCallStubEnd:		i32;	// host call stub that calls runtime
 	+64	codeEnd:			i32;	// end of all executable code
@@ -252,7 +251,6 @@ component X86_64PreGenStubs {
 				.put1("\tprobed dispatch:           0x%x\n", s + ic.header.probedDispatchTableOffset)
 				.put1("\toob memory:         break *0x%x\n", s + ic.header.oobMemoryHandlerOffset)
 				.put1("\tdivide by zero:     break *0x%x\n", s + ic.header.divZeroHandlerOffset)
-				.put1("\tstack overflow:     break *0x%x\n", s + ic.header.stackOverflowHandlerOffset)
 				.put1("\tcode end:                  0x%x\n", s + ic.header.codeEnd);
 			for (l = global_stub_list; l != null; l = l.tail) {
 				var stub = l.head;

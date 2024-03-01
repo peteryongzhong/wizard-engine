@@ -507,7 +507,6 @@ class SinglePassCompiler(xenv: SpcExecEnv, masm: MacroAssembler, regAlloc: RegAl
 		} else {
 			masm.emit_call_r(tmp);
 			masm.bindLabel(retpt);
-			emit_unwind_check();
 			emit_reload_regs();
 			state.popArgsAndPushResults(func.sig);
 		}
@@ -579,7 +578,6 @@ class SinglePassCompiler(xenv: SpcExecEnv, masm: MacroAssembler, regAlloc: RegAl
 		} else {
 			masm.emit_call_r(tmp2);
 			masm.bindLabel(retpt);
-			emit_unwind_check();
 			emit_reload_regs();
 			state.popArgsAndPushResults(sig);
 		}
@@ -616,7 +614,6 @@ class SinglePassCompiler(xenv: SpcExecEnv, masm: MacroAssembler, regAlloc: RegAl
 		masm.emit_call_r(tmp);
 
 		masm.bindLabel(retpt);
-		emit_unwind_check();
 		emit_reload_regs();
 
 		state.popArgsAndPushResults(sig);
@@ -957,7 +954,6 @@ class SinglePassCompiler(xenv: SpcExecEnv, masm: MacroAssembler, regAlloc: RegAl
 		emit_load_instance(regs.runtime_arg0);
 		masm.emit_mov_r_i(regs.runtime_arg1, arg1);
 		masm.emit_call_runtime_op(op);
-		if (canTrap) emit_unwind_check();
 		dropN(args);
 		for (t in results) state.push(typeToKindFlags(t) | TAG_STORED | IS_STORED, NO_REG, 0);
 		emit_reload_regs();
@@ -970,7 +966,6 @@ class SinglePassCompiler(xenv: SpcExecEnv, masm: MacroAssembler, regAlloc: RegAl
 		masm.emit_mov_r_i(regs.runtime_arg1, arg1);
 		masm.emit_mov_r_i(regs.runtime_arg2, arg2);
 		masm.emit_call_runtime_op(op);
-		if (canTrap) emit_unwind_check();
 		dropN(args);
 		for (t in results) state.push(typeToKindFlags(t) | TAG_STORED | IS_STORED, NO_REG, 0);
 		emit_reload_regs();
@@ -1170,12 +1165,6 @@ class SinglePassCompiler(xenv: SpcExecEnv, masm: MacroAssembler, regAlloc: RegAl
 	//====================================================================
 	// codegen operations
 	//====================================================================
-	def emit_unwind_check() {
-		if (FeatureDisable.stackUnwind) {
-			if (unwind_label == null) unwind_label = masm.newLabel(func.cur_bytecode.length);
-			masm.emit_brne_r_i(regs.ret_throw, 0, unwind_label);
-		}
-	}
 	def emit_compute_vsp(dst: Reg, slots: u32) {
 		masm.emit_mov_r_r(dst, regs.vfp); // XXX: use 3-addr adjustment of VSP (i.e. lea)
 		if (slots > 0) masm.emit_addw_r_i(dst, int.view(slots) * masm.valuerep.slot_size);
