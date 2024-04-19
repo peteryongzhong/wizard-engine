@@ -91,6 +91,22 @@ class ControlInstrumentation(func: FuncDecl, entries: Array<(int, Probe)>) {
 		}
 		return null;
 	}
+	def isNonZero() -> bool {
+		for (e in entries) {
+			match (e.1) {
+				x: CountProbe => 	if (x.count > 0) return true;
+				x: CiBrProbe => 	if (nonzero(x.taken)) return true;
+				x: CiBrOnNullProbe => 	if (nonzero(x.taken)) return true;
+				x: CiBrOnCastProbe => 	if (nonzero(x.taken)) return true;
+				x: CiBrTableProbe => 	if (nonzero(x.taken)) return true;
+			}
+		}
+		return false;
+	}
+}
+def nonzero(x: Array<u64>) -> bool {
+	for (v in x) if (v > 0) return true;
+	return false;
 }
 
 private class CiBrProbe extends OperandProbe_i_v {
